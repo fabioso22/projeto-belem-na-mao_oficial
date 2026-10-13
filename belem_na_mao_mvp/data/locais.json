@@ -1,0 +1,156 @@
+[
+  {
+    "id": "ver-o-peso",
+    "nome": "Mercado Ver-o-Peso",
+    "categoria": [
+      "Gastronomia",
+      "Cultura"
+    ],
+    "bairro": "Cidade Velha",
+    "preco": 1,
+    "descricao": "Um dos lugares mais conhecidos de Belém, com mercado, ingredientes regionais e movimento às margens da baía.",
+    "por_que_visitar": "Para conhecer sabores, aromas e parte importante do cotidiano e da cultura paraense.",
+    "duracao": "1–2 horas",
+    "endereco": "Belém, PA — confirme o endereço e o acesso antes da visita.",
+    "tags": [
+      "comida típica",
+      "mercado",
+      "cultura"
+    ]
+  },
+  {
+    "id": "estacao-das-docas",
+    "nome": "Estação das Docas",
+    "categoria": [
+      "Gastronomia",
+      "Passeio"
+    ],
+    "bairro": "Campina",
+    "preco": 3,
+    "descricao": "Complexo à beira da baía com opções de alimentação e espaços para passear.",
+    "por_que_visitar": "Boa opção para combinar passeio, vista para a água e uma refeição.",
+    "duracao": "1–3 horas",
+    "endereco": "Belém, PA — confirme horários e funcionamento antes da visita.",
+    "tags": [
+      "orla",
+      "restaurantes",
+      "passeio"
+    ]
+  },
+  {
+    "id": "feliz-lusitania",
+    "nome": "Complexo Feliz Lusitânia",
+    "categoria": [
+      "Cultura",
+      "História"
+    ],
+    "bairro": "Cidade Velha",
+    "preco": 2,
+    "descricao": "Área histórica de Belém com patrimônio arquitetônico e espaços culturais.",
+    "por_que_visitar": "Para explorar a história da cidade e conhecer construções emblemáticas.",
+    "duracao": "1–2 horas",
+    "endereco": "Belém, PA — verifique horários dos espaços que pretende visitar.",
+    "tags": [
+      "história",
+      "arquitetura",
+      "museu"
+    ]
+  },
+  {
+    "id": "mangal",
+    "nome": "Mangal das Garças",
+    "categoria": [
+      "Natureza",
+      "Passeio"
+    ],
+    "bairro": "Cidade Velha",
+    "preco": 2,
+    "descricao": "Parque urbano com áreas verdes e espaços de observação da natureza.",
+    "por_que_visitar": "Uma pausa ao ar livre para apreciar paisagens e biodiversidade regional.",
+    "duracao": "1–2 horas",
+    "endereco": "Belém, PA — confirme ingresso e horários antes da visita.",
+    "tags": [
+      "parque",
+      "natureza",
+      "família"
+    ]
+  },
+  {
+    "id": "teatro-da-paz",
+    "nome": "Theatro da Paz",
+    "categoria": [
+      "Cultura",
+      "História"
+    ],
+    "bairro": "Campina",
+    "preco": 2,
+    "descricao": "Teatro histórico e marco arquitetônico no centro de Belém.",
+    "por_que_visitar": "Para conhecer um importante patrimônio cultural da cidade.",
+    "duracao": "1 hora",
+    "endereco": "Belém, PA — confirme visitas guiadas e programação.",
+    "tags": [
+      "teatro",
+      "arquitetura",
+      "história"
+    ]
+  },
+  {
+    "id": "praca-republica",
+    "nome": "Praça da República",
+    "categoria": [
+      "Passeio",
+      "Natureza"
+    ],
+    "bairro": "Campina",
+    "preco": 1,
+    "descricao": "Praça central com áreas arborizadas e construções históricas no entorno.",
+    "por_que_visitar": "Para caminhar, descansar e observar a vida urbana de Belém.",
+    "duracao": "30–60 minutos",
+    "endereco": "Belém, PA — verifique eventos e condições locais.",
+    "tags": [
+      "praça",
+      "caminhada",
+      "centro"
+    ]
+  },
+  {
+    "id": "ilha-combu",
+    "nome": "Ilha do Combu",
+    "categoria": [
+      "Natureza",
+      "Gastronomia",
+      "Passeio"
+    ],
+    "bairro": "Região insular",
+    "preco": 2,
+    "descricao": "Destino insular próximo a Belém, conhecido por paisagens amazônicas e experiências gastronômicas.",
+    "por_que_visitar": "Para sair do ritmo urbano e conhecer uma paisagem ligada ao ambiente amazônico.",
+    "duracao": "Meio período",
+    "endereco": "Acesso por transporte fluvial; confirme embarque, custos e condições antes de ir.",
+    "tags": [
+      "ilha",
+      "amazônia",
+      "chocolate",
+      "comida típica"
+    ]
+  },
+  {
+    "id": "basilica-nazare",
+    "nome": "Basílica de Nazaré",
+    "categoria": [
+      "Cultura",
+      "História"
+    ],
+    "bairro": "Nazaré",
+    "preco": 1,
+    "descricao": "Importante templo religioso e referência cultural da cidade.",
+    "por_que_visitar": "Para conhecer sua arquitetura e a relevância cultural de Nazaré em Belém.",
+    "duracao": "30–60 minutos",
+    "endereco": "Belém, PA — respeite os horários de celebração e visitação.",
+    "tags": [
+      "arquitetura",
+      "religião",
+      "cultura"
+    ]
+  }
+]
