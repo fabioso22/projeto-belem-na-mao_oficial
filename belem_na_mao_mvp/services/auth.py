@@ -218,13 +218,13 @@ def obter_caminho_imagem() -> Path:
 
     possiveis_caminhos = [
         # Script dentro de 'services/' e 'assets/' no mesmo nível de 'services/'
-        diretorio_script.parent / "assets" / "images" / "imagem_login.png",
+        diretorio_script.parent / "assets" / "images" / "imagem_login.jpg",
         # Script na raiz do projeto
-        diretorio_script / "belem_na_mao_mvp" / "assets" / "images" / "imagem_login.png",
+        diretorio_script / "belem_na_mao_mvp" / "assets" / "images" / "imagem_login.jpg",
         # Script diretamente dentro de 'belem_na_mao_mvp'
-        diretorio_script / "assets" / "images" / "imagem_login.png",
+        diretorio_script / "assets" / "images" / "imagem_login.jpg",
         # Script em 'services/' e precisa subir 2 níveis
-        diretorio_script.parent.parent / "belem_na_mao_mvp" / "assets" / "images" / "imagem_login.png",
+        diretorio_script.parent.parent / "belem_na_mao_mvp" / "assets" / "images" / "imagem_login.jpg",
     ]
 
     for caminho in possiveis_caminhos:
