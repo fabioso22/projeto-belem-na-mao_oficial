@@ -423,7 +423,7 @@
 import customtkinter as ctk
 
 from services.catalogo import carregar_locais, buscar_locais, rotulo_preco
-from services.roteiro import carregar_roteiro, adicionar, remover, salvar_roteiro
+from services.roteiro import carregar_roteiro, adicionar, remover, salvar_roteiro, limpar
 
 # ---------- Paleta ----------
 BG = "#F3F5F9"
@@ -474,15 +474,17 @@ class BelemNaMaoApp(ctk.CTk):
     LARGURA = 430
     ALTURA = 860
 
-    def __init__(self):
+    def __init__(self, usuario=None):
         super().__init__()
+        self.usuario = usuario or {"id": 1, "nome": "Visitante", "usuario": "visitante"}
+        self.usuario_id = self.usuario.get("id", 1)
         self.title("BelémNaMão")
         self.geometry(f"{self.LARGURA}x{self.ALTURA}")
         self.minsize(380, 680)
         self.configure(fg_color=BG)
 
         self.locais = carregar_locais()
-        self.roteiro = carregar_roteiro()
+        self.roteiro = carregar_roteiro(usuario_id=self.usuario_id)
         self.aba_atual = "Início"
 
         # Estado dos filtros (mantido ao navegar)
@@ -584,7 +586,8 @@ class BelemNaMaoApp(ctk.CTk):
 
         hero = ctk.CTkFrame(rolagem, fg_color=PRIMARY, corner_radius=28)
         hero.pack(fill="x", padx=16, pady=(16, 8))
-        ctk.CTkLabel(hero, text="◉ Belém na Mão", font=fonte(13, "bold"),
+        nome_usuario = self.usuario.get("nome", "Visitante")
+        ctk.CTkLabel(hero, text=f"◉ Belém na Mão  •  Olá, {nome_usuario}", font=fonte(13, "bold"),
                      text_color=ON_PRIMARY_MUTED).pack(anchor="w", padx=22, pady=(22, 0))
         ctk.CTkLabel(hero, text="Descubra Belém\ndo seu jeito", font=fonte(30, "bold"),
                      text_color="#FFFFFF", justify="left").pack(anchor="w", padx=22, pady=(6, 4))
@@ -828,28 +831,98 @@ class BelemNaMaoApp(ctk.CTk):
         botao.pack(fill="x", padx=18, pady=12)
 
     def _adicionar_na_tela(self, local, botao):
-        self.adicionar_roteiro(local)
-        botao.configure(text="✓  No seu roteiro", fg_color=PRIMARY_SOFT,
-                        hover_color="#D3DEEE", text_color=PRIMARY)
+        self.adicionar_roteiro(local, botao=botao)
 
     # ------------------------------------------------------------------
     # Roteiro
     # ------------------------------------------------------------------
     def adicionar_roteiro(self, local, botao=None):
+        """Adiciona diretamente o local ao roteiro sem modal de confirmação."""
         if self._no_roteiro(local):
             self._toast("Esse local já está no seu roteiro")
         else:
-            self.roteiro = adicionar(self.roteiro, local)
-            self._toast(f'{local["nome"]} foi adicionado')
+            self.roteiro = adicionar(self.roteiro, local, usuario_id=self.usuario_id)
+            self._toast(f"✓ {local['nome']} adicionado ao roteiro")
         if botao is not None:
-            botao.configure(text="✓", fg_color=PRIMARY_SOFT, text_color=PRIMARY,
-                            hover_color="#D3DEEE")
+            texto_atual = str(botao.cget("text"))
+            if "roteiro" in texto_atual.lower():
+                botao.configure(text="✓  No seu roteiro", fg_color=PRIMARY_SOFT,
+                                text_color=PRIMARY, hover_color="#D3DEEE")
+            else:
+                botao.configure(text="✓", fg_color=PRIMARY_SOFT,
+                                text_color=PRIMARY, hover_color="#D3DEEE")
+
+    def confirmar_remover_item(self, local):
+        """Janela de confirmação para remover um item específico do roteiro."""
+        fundo = ctk.CTkFrame(self, fg_color="#0A1020", corner_radius=0)
+        fundo.place(relx=0, rely=0, relwidth=1, relheight=1)
+        painel = ctk.CTkFrame(fundo, fg_color=PANEL, corner_radius=26)
+        painel.place(relx=0.5, rely=0.5, anchor="center")
+
+        emoji, cor = estilo_local(local)
+        tile = ctk.CTkFrame(painel, fg_color=cor, corner_radius=18, width=64, height=64)
+        tile.pack(pady=(22, 10))
+        tile.pack_propagate(False)
+        ctk.CTkLabel(tile, text=emoji, font=fonte(28)).pack(expand=True)
+
+        ctk.CTkLabel(painel, text="Remover do roteiro?", font=fonte(20, "bold"), text_color=TEXT
+                     ).pack(padx=28, pady=(0, 4))
+        ctk.CTkLabel(painel, text=local["nome"], font=fonte(15, "bold"), text_color=ACCENT,
+                     wraplength=280).pack(padx=24)
+        ctk.CTkLabel(painel, text=f"{local['bairro']}  •  {local.get('duracao', '')}",
+                     font=fonte(12), text_color=MUTED).pack(padx=24, pady=(2, 10))
+
+        ctk.CTkLabel(painel, text="Tem certeza que deseja remover este local do seu roteiro?",
+                     font=fonte(13), text_color=TEXT, justify="center", wraplength=280).pack(padx=28, pady=(0, 18))
+
+        def confirmar():
+            fundo.destroy()
+            self._remover_e_atualizar(local["id"])
+
+        botoes = ctk.CTkFrame(painel, fg_color="transparent")
+        botoes.pack(padx=22, pady=(0, 22))
+        self._botao(botoes, "Cancelar", fundo.destroy, largura=115, cor=PRIMARY_SOFT,
+                    hover="#D3DEEE", texto_cor=PRIMARY).pack(side="left", padx=5)
+        self._botao(botoes, "Remover", confirmar, largura=115, cor=ACCENT,
+                    hover=ACCENT_HOVER).pack(side="left", padx=5)
+
+    def confirmar_salvar_roteiro(self):
+        """Menu de confirmação para salvar e consolidar o roteiro no banco de dados SQLite."""
+        if not self.roteiro:
+            self._toast("Seu roteiro ainda não tem locais para salvar")
+            return
+
+        fundo = ctk.CTkFrame(self, fg_color="#0A1020", corner_radius=0)
+        fundo.place(relx=0, rely=0, relwidth=1, relheight=1)
+        painel = ctk.CTkFrame(fundo, fg_color=PANEL, corner_radius=26)
+        painel.place(relx=0.5, rely=0.5, anchor="center")
+
+        ctk.CTkLabel(painel, text="💾", font=fonte(38)).pack(pady=(22, 6))
+        ctk.CTkLabel(painel, text="Salvar Roteiro?", font=fonte(20, "bold"), text_color=TEXT
+                     ).pack(padx=28, pady=(0, 4))
+
+        total = len(self.roteiro)
+        usuario_nome = self.usuario.get("nome", "Visitante")
+        ctk.CTkLabel(painel, text=f"Deseja confirmar o salvamento de {total} local(is)\nno perfil de {usuario_nome} no banco de dados?",
+                     font=fonte(13), text_color=MUTED, justify="center").pack(padx=24, pady=(4, 18))
+
+        def confirmar():
+            salvar_roteiro(self.roteiro)
+            fundo.destroy()
+            self._toast(f"✓ Roteiro salvo com sucesso ({total} locais)!")
+
+        botoes = ctk.CTkFrame(painel, fg_color="transparent")
+        botoes.pack(padx=22, pady=(0, 22))
+        self._botao(botoes, "Cancelar", fundo.destroy, largura=115, cor=PRIMARY_SOFT,
+                    hover="#D3DEEE", texto_cor=PRIMARY).pack(side="left", padx=5)
+        self._botao(botoes, "Confirmar", confirmar, largura=125, cor=PRIMARY,
+                    hover=PRIMARY_HOVER).pack(side="left", padx=5)
 
     def mostrar_roteiro(self):
         self._limpar()
         self._marcar_aba("Roteiro")
         total = len(self.roteiro)
-        sub = (f"{total} local(is) salvo(s) neste computador" if total
+        sub = (f"{total} local(is) salvo(s) no seu roteiro" if total
                else "Os lugares que você salvar aparecem aqui")
         self._cabecalho("Meu roteiro", sub)
 
@@ -882,18 +955,20 @@ class BelemNaMaoApp(ctk.CTk):
             ctk.CTkButton(
                 card, text="✕", width=36, height=36, corner_radius=18, font=fonte(14, "bold"),
                 fg_color=ACCENT_SOFT, text_color=ACCENT, hover_color="#F0CDD0",
-                command=lambda i=local["id"]: self._remover_e_atualizar(i),
+                command=lambda l=local: self.confirmar_remover_item(l),
             ).pack(side="right", padx=12)
             for w in (card, info, *info.winfo_children()):
                 w.bind("<Button-1>", lambda _e, l=local: self.mostrar_detalhes(l, self.mostrar_roteiro))
 
         rodape = ctk.CTkFrame(self.conteudo, fg_color="transparent")
-        rodape.pack(fill="x", padx=20, pady=(6, 12))
-        self._botao(rodape, "Limpar roteiro", self.limpar_roteiro, largura=140, altura=40,
-                    cor=ACCENT_SOFT, hover="#F0CDD0", texto_cor=ACCENT).pack(side="right")
+        rodape.pack(fill="x", padx=16, pady=(6, 12))
+        self._botao(rodape, "Limpar", self.limpar_roteiro, largura=110, altura=40,
+                    cor=ACCENT_SOFT, hover="#F0CDD0", texto_cor=ACCENT).pack(side="left", padx=4)
+        self._botao(rodape, "💾 Salvar roteiro", self.confirmar_salvar_roteiro, largura=150, altura=40,
+                    cor=PRIMARY, hover=PRIMARY_HOVER, texto_cor="#FFFFFF").pack(side="right", padx=4)
 
     def _remover_e_atualizar(self, local_id):
-        self.roteiro = remover(self.roteiro, local_id)
+        self.roteiro = remover(self.roteiro, local_id, usuario_id=self.usuario_id)
         self.mostrar_roteiro()
         self._toast("Local removido do roteiro")
 
@@ -909,8 +984,7 @@ class BelemNaMaoApp(ctk.CTk):
                      font=fonte(13), text_color=MUTED).pack(padx=28)
 
         def confirmar():
-            self.roteiro = []
-            salvar_roteiro(self.roteiro)
+            self.roteiro = limpar(usuario_id=self.usuario_id)
             fundo.destroy()
             self.mostrar_roteiro()
             self._toast("Roteiro limpo")
@@ -921,3 +995,4 @@ class BelemNaMaoApp(ctk.CTk):
                     hover="#D3DEEE", texto_cor=PRIMARY).pack(side="left", padx=5)
         self._botao(botoes, "Limpar", confirmar, largura=120, cor=ACCENT,
                     hover=ACCENT_HOVER).pack(side="left", padx=5)
+
