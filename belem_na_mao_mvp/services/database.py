@@ -587,3 +587,5 @@ if __name__ == "__main__":
 
     roteiro = obter_roteiro_db(1)
     print(f"[OK] Itens no roteiro inicial do usuário 1: {len(roteiro)}")
+
+# fim
