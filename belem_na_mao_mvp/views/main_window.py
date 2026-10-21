@@ -996,3 +996,4 @@ class BelemNaMaoApp(ctk.CTk):
         self._botao(botoes, "Limpar", confirmar, largura=120, cor=ACCENT,
                     hover=ACCENT_HOVER).pack(side="left", padx=5)
 
+# fim

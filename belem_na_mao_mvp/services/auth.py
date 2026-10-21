@@ -388,3 +388,6 @@ class JanelaLogin(ctk.CTk):
 if __name__ == "__main__":
     app = JanelaLogin()
     app.mainloop()
+    
+    
+# fim
