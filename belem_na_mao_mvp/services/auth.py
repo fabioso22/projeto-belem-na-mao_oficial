@@ -209,8 +209,11 @@ class JanelaLogin(ctk.CTk):
         self.minsize(860, 580)
         self.configure(fg_color=BG)
 
-        # Garante inicialização do banco SQLite ao abrir
-        inicializar_banco()
+        # Garante inicialização do banco ao abrir sem travar em caso de falha de rede
+        try:
+            inicializar_banco()
+        except Exception as e:
+            print(f"[Aviso] Falha ao inicializar banco: {e}")
 
         self._centralizar()
         self._configurar_grid()

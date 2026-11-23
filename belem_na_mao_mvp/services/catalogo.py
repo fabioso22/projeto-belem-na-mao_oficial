@@ -60,3 +60,5 @@ def buscar_locais(
 def rotulo_preco(valor: Any) -> str:
     """Converte o valor numérico de preço para texto legível."""
     return {1: "$ · Baixo", 2: "$$ · Médio", 3: "$$$ · Alto"}.get(valor, "Não informado")
+
+# fim

@@ -75,3 +75,5 @@ def limpar(usuario_id: Optional[int] = 1) -> List[Dict[str, Any]]:
     limpar_roteiro_db(usuario_id=usuario_id)
     salvar_roteiro([])
     return []
+
+#fim
