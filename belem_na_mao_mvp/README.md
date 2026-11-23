@@ -1,98 +1,88 @@
-# BelémNaMão — MVP Desktop com Banco de Dados SQLite
+# BelémNaMão — Guia Inteligente da Amazônia Atlântica
 
-Protótipo funcional em Python + CustomTkinter com persistência em SQLite para demonstração e uso completo.
-
-## O que já funciona
-- **Banco de Dados Relacional SQLite** (`data/belem_na_mao.db`) com criação automática e migração inicial.
-- **Autenticação Real de Usuários**:
-  - Senhas criptografadas com `PBKDF2-HMAC-SHA256` e salt dinâmico.
-  - Tela de cadastro de novos usuários com validação de unicidade de login/e-mail.
-  - Usuários de demonstração pré-configurados:
-    - `turista` / `123456`
-    - `admin` / `admin123`
-  - Opção rápida para entrar como visitante.
-- **Catálogo de Pontos Turísticos e Experiências**:
-  - Locais, categorias estruturadas e tags salvas e consultadas no SQLite.
-  - Busca textual e filtros por categoria e faixa de preço.
-- **Roteiro Personalizado por Usuário**:
-  - Salva e remove locais no banco de dados SQLite individualmente para cada usuário.
-  - Sincronização automática para compatibilidade e backup em `data/roteiro.json`.
-  - Confirmação visual para limpar roteiro.
-- **Interface Moderna Mobile-First**:
-  - Design inspirado em smartphones (430x860), paleta profissional, botões arredondados, toasts e feedback interativo.
+Aplicativo desktop moderno, limpo e profissional em Python + CustomTkinter + Pillow com persistência em banco de dados relacional SQLite, suporte a áudio-guia interativo, inteligência climática e otimização de roteiros com IA.
 
 ---
 
-## Modelo de Dados (SQLite)
+## 🎨 Design System e Identidade Visual
 
-O banco é estruturado com integridade referencial (`PRAGMA foreign_keys = ON;`) e índices otimizados:
+O visual da aplicação foi completamente redesenhado para refletir a estética contemporânea das metrópoles da Amazônia Atlântica:
 
-1. **`usuarios`**:
-   - `id`: Chave primária autoincrementada.
-   - `nome`, `usuario` (único), `email` (único), `senha_hash`, `salt`, `criado_em`.
-2. **`locais`**:
-   - `id`: Identificador textual único (ex.: `ver-o-peso`).
-   - `nome`, `bairro`, `preco` (1 a 3), `descricao`, `por_que_visitar`, `duracao`, `endereco`, `imagem`, `criado_em`.
-3. **`categorias`**:
-   - `id`, `nome`, `emoji`, `cor`, `descricao`.
-4. **`local_categorias`**:
-   - Tabela de junção N:N (`local_id`, `categoria`).
-5. **`local_tags`**:
-   - Tags de busca vinculadas a cada local (`local_id`, `tag`).
-6. **`roteiro_itens`**:
-   - Itens salvos no roteiro (`id`, `usuario_id`, `local_id`, `ordem`, `adicionado_em`).
-7. **`avaliacoes`**:
-   - Estrutura pronta para avaliações futuras (`usuario_id`, `local_id`, `nota`, `comentario`).
+- **Paleta de Cores Inspirada em Belém**:
+  - `Midnight Guajará (#00132C & #0F2847)`: Tons nobres de azul escuro para containers, cabeçalho e tipografia de alto contraste.
+  - `Rubi Açaí (#A13A53 & #FFD9DE)`: Acento regional quente para badges, botões de ação e tags históricas.
+  - `Verde Floresta (#012E21 & #C0ECD7)`: Indicadores de patrimônio ambiental, turismo sustentável e status positivo.
+  - `Clean Canvas (#F8F9FF & #FFFFFF)`: Fundos limpos, cartões puros e divisores sutis com sombras suaves.
+- **Tipografia Moderna**:
+  - Hierarquia visual limpa e refinada com `Segoe UI`, com títulos marcantes, labels em caixa alta com espaçamento e corpo de texto legível.
+- **Galeria Visual Bento Showcase**:
+  - Imagens de alta resolução com cantos arredondados (`LANCZOS` + máscara alpha) e carregamento otimizado com cache em memória.
 
 ---
 
-## Requisitos
-- Python 3.10+
-- Windows, macOS ou Linux com ambiente gráfico.
+## 🚀 Principais Telas e Funcionalidades
 
-## Instalação e Execução
+### 1. Tela de Login e Cadastro (Split-Screen)
+- **Painel Esquerdo (Autenticação)**:
+  - Logotipo oficial com emblema náutico e selo *Pará, Amazônia*.
+  - Banner interativo com credenciais de teste (`turista` / `123456`) e botão **Preencher** automático.
+  - Campos com bordas de foco reativas e botão **Mostrar/Ocultar** senha.
+  - Opções para lembrar login, entrar como convidado e cadastrar nova conta (com hashing `PBKDF2-SHA256`).
+- **Painel Direito (Hero Showcase)**:
+  - Fotografia panorâmica do pôr do sol na Baía do Guajará.
+  - Cartão *Glassmorphism* flutuante com selo *Amazônia Urbana & Cultural* e destaques das principais atrações.
 
-Abra o terminal na pasta do projeto e execute:
+### 2. Barra Superior Fixo (Header & Micro-Intel)
+- Logotipo oficial com tipografia integrada (`Belém` + `NaMão`).
+- **Widget de Clima e Marés em Tempo Real**: `🕒 Chuva das 16h: Provável (82%) • 🌊 Maré: Enchendo`.
+- Navegação em pílulas: `Início`, `Explorar`, `Meu Roteiro` e `Sobre Belém`.
+- Contador dinâmico de favoritos salvos (`🔖 X salvos`) com atalho direto para o roteiro.
+- Identificação do usuário logado e botão de saída.
+
+### 3. Início (Dashboard de Boas-Vindas)
+- **Hero Banner Imersivo**: Fotografia da orla e chamada para ação.
+- **Strip de Inteligência Climática**: 4 cartões com temperatura (29°C), chuva típica da tarde, tábua de marés da baía e policiamento DPTUR.
+- **Categorias Bento**: Gastronomia, Cultura, História, Natureza e Passeio com atalhos de clique direto.
+- **Destaques de Belém**: Cartões com fotos reais, avaliação (★ 4.9), bairro e botão de salvar.
+- **Banner Sonoro**: Divulgação do Áudio-Tour narrado por historiadores locais.
+
+### 4. Explorar (Catálogo Completo & Filtros)
+- Busca instantânea por nome, bairro ou palavra-chave com botão de limpar (✕).
+- Pílulas horizontais de categorias (`Todas`, `Gastronomia`, `Cultura`, `História`, `Natureza`, `Passeio`).
+- Filtros segmentados por faixa de preço (`Qualquer`, `$ Econômico`, `$$ Médio`, `$$$ Alto`) e seleção de bairro.
+- Alternância instantânea entre modo **Grade** (Bento Cards) e **Mapa Interativo**.
+
+### 5. Detalhes da Atração (Showcase Completo)
+- Navegação contextual com *breadcrumbs* (`Início / Explorar / Bairro / Local`) e botão de retorno.
+- Galeria Bento com foto principal e miniaturas secundárias.
+- **Mini-Player de Áudio-Guia Integrado**: Simulação de áudio com botão de Play/Pause, barra de progresso e contador de tempo.
+- Sessão *Sobre o Marco Histórico* e 4 cartões de destaques (*Mirante 360°*, *Museu do Encontro*, etc.).
+- Cartão lateral fixo com preço, horário (*Aberto Agora*), previsão de chuva, botão de adicionar ao roteiro e atalho para o Google Maps.
+
+### 6. Meu Roteiro (Timeline Inteligente)
+- Métricas consolidadas: Duração total (~8h30), Paradas programadas, Estimativa de gasto e Distância a pé.
+- Botão **✨ Otimizar Ordem (IA)**: Reorganiza os pontos na ordem geográfica e cronológica ideal para evitar a chuva do meio da tarde.
+- Linha do tempo dividida em períodos:
+  - *Turno da Manhã (08h00 às 12h30)* com conectores de caminhada.
+  - *Pausa de Almoço Sugerida (12h30 às 14h00)*.
+  - *Turno da Tarde (14h30 às 19h30)* sincronizado com a climatização durante a chuva e pôr do sol nas Docas.
+- Deck de Apoio com mini-mapa, previsão de marés e checklist interativo (*O que levar no dia*).
+- Salva diretamente no banco relacional SQLite com backup em JSON.
+
+### 7. Sobre Belém
+- Guia cultural detalhado: A lenda e ciência da *Chuva das 16h*, Gastronomia Criativa UNESCO (açaí com peixe frito, tacacá, tucupi e jambu), navegação na baía e contatos de emergência e apoio ao turista.
+
+---
+
+## 🛠️ Requisitos e Execução
+
+- **Python 3.10+**
+- Dependências: `customtkinter`, `Pillow`
 
 ```bash
-# 1. Criar e ativar o ambiente virtual (Windows)
-python -m venv .venv
+# 1. Ativar o ambiente virtual
 .venv\Scripts\activate
 
-# 2. Instalar dependências
-pip install -r requirements.txt
-
-# 3. Executar o aplicativo
+# 2. Executar o aplicativo
 python main.py
-```
-
-### Testar o Banco de Dados
-Para rodar a suíte de testes do banco e verificar a integridade do SQLite:
-```bash
-python test_db.py
-```
-
----
-
-## Estrutura do Projeto
-```text
-belem_na_mao_mvp/
-├── main.py                     # Ponto de entrada do sistema
-├── test_db.py                  # Testes automatizados do banco SQLite
-├── requirements.txt            # Dependências (customtkinter, Pillow)
-├── README.md                   # Documentação detalhada
-├── data/
-│   ├── belem_na_mao.db         # Banco de dados SQLite relacional
-│   ├── locais.json             # Dados originais de apoio/fallback
-│   └── roteiro.json            # Backup de sincronização do roteiro
-├── services/
-│   ├── database.py             # Camada do SQLite (CRUD, auth, hashing)
-│   ├── auth.py                 # Telas de login e cadastro
-│   ├── catalogo.py             # Consultas e filtros do catálogo
-│   └── roteiro.py              # Gerenciamento do roteiro do usuário
-├── views/
-│   └── main_window.py          # Dashboard e telas principais
-└── assets/
-    ├── README.txt
-    └── images/                 # Imagens do sistema
 ```
