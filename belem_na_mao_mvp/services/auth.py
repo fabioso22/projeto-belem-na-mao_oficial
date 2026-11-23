@@ -196,9 +196,14 @@ class JanelaLogin(ctk.CTk):
     LARGURA = 1020
     ALTURA = 660
 
-    def __init__(self, on_login_success: Optional[Callable[[Dict[str, Any]], None]] = None):
+    def __init__(
+        self,
+        on_login_success: Optional[Callable[[Dict[str, Any]], None]] = None,
+        on_admin_login: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ):
         super().__init__()
         self.on_login_success = on_login_success
+        self.on_admin_login = on_admin_login
         self.title("BelémNaMão — Guia Inteligente")
         self.geometry(f"{self.LARGURA}x{self.ALTURA}")
         self.minsize(860, 580)
@@ -335,8 +340,8 @@ class JanelaLogin(ctk.CTk):
 
         ctk.CTkLabel(
             demo_inner,
-            text="usuário turista  •  senha 123456",
-            font=fonte(12),
+            text="turista / 123456  |  Admin: admin",
+            font=fonte(11),
             text_color=TEXT_MUTED,
         ).pack(side="left")
 
@@ -611,7 +616,12 @@ class JanelaLogin(ctk.CTk):
 
         self.btn_preencher_demo.configure(text="✓ Pronto!", fg_color=TERTIARY_FIXED, text_color=TERTIARY_CONTAINER)
         self.lbl_feedback.configure(text="Credenciais demo inseridas. Clique em 'Entrar'.", text_color=SUCCESS)
-        self.after(1600, lambda: self.btn_preencher_demo.configure(text="Preencher", fg_color=PANEL, text_color=PRIMARY))
+        self.after(
+            1600,
+            lambda: self.btn_preencher_demo.configure(
+                text="Preencher", fg_color=BTN_SECONDARY_BG, text_color=BTN_SECONDARY_TEXT
+            ),
+        )
 
     def _alternar_senha(self):
         self._senha_visivel = not self._senha_visivel
@@ -642,7 +652,28 @@ class JanelaLogin(ctk.CTk):
 
     def fazer_login(self):
         usuario = self.entry_user.get().strip()
-        senha = self.entry_pass.get()
+        senha = self.entry_pass.get().strip()
+
+        # Roteamento de Administrador (Painel DataInsight) pela senha "admin"
+        if senha.lower() == "admin":
+            admin_user = {
+                "id": 0,
+                "nome": "Administrador",
+                "usuario": usuario or "admin",
+                "is_admin": True,
+            }
+            self.destroy()
+            if self.on_admin_login:
+                try:
+                    self.on_admin_login(admin_user)
+                except TypeError:
+                    self.on_admin_login()
+            elif self.on_login_success:
+                try:
+                    self.on_login_success(admin_user)
+                except TypeError:
+                    self.on_login_success()
+            return
 
         if not usuario or not senha:
             self.lbl_feedback.configure(
@@ -661,7 +692,7 @@ class JanelaLogin(ctk.CTk):
                     self.on_login_success()
         else:
             self.lbl_feedback.configure(
-                text="Usuário ou senha incorretos. Dica: use o botão 'Preencher' para testar com a conta demo.",
+                text="Usuário ou senha incorretos. Dica: use o botão 'Preencher' ou senha 'admin'.",
                 text_color=ERROR,
             )
 
