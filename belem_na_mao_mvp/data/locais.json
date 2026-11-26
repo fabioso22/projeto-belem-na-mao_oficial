@@ -27,14 +27,18 @@
     ],
     "bairro": "Campina",
     "preco": 3,
-    "descricao": "Complexo à beira da baía com opções de alimentação e espaços para passear.",
-    "por_que_visitar": "Boa opção para combinar passeio, vista para a água e uma refeição.",
-    "duracao": "1–3 horas",
-    "endereco": "Belém, PA — confirme horários e funcionamento antes da visita.",
+    "descricao": "Complexo turístico e gastronômico à beira da Baía do Guajará que ganha vida especial à noite, com iluminação cênica dos guindastes históricos, bares, cervejaria artesanal, restaurantes regionais e música ao vivo.",
+    "por_que_visitar": "Destino imperdível no fim de tarde e período noturno em Belém: combine o pôr do sol na orla com jantares típicos, chopes amazônicos, sorvetes regionais e apresentações musicais noturnas no Anfiteatro.",
+    "duracao": "2–4 horas (Noite)",
+    "endereco": "Av. Boulevard Castilhos França, s/n — Campina, Belém, PA. Aberto até 00h (Sex/Sáb até 01h).",
     "tags": [
       "orla",
       "restaurantes",
-      "passeio"
+      "passeio",
+      "noturno",
+      "vida noturna",
+      "música ao vivo",
+      "bares"
     ]
   },
   {
@@ -151,6 +155,28 @@
       "arquitetura",
       "religião",
       "cultura"
+    ]
+  },
+  {
+    "id": "bistro-guajara-noturno",
+    "nome": "Bistrô do Guajará",
+    "categoria": [
+      "Gastronomia",
+      "Passeio"
+    ],
+    "bairro": "Umarizal",
+    "preco": 3,
+    "descricao": "Restaurante regional contemporâneo no coração do Umarizal, especializado em jantares amazônicos noturnos com filhote na brasa, pato no tucupi, drinques de jambu e música paraense ao vivo.",
+    "por_que_visitar": "Ideal para aproveitar a vida noturna gastronômica de Belém com alta culinária paraense, ambiente climatizado e carta autoral de coquetéis amazônicos.",
+    "duracao": "2–3 horas (Noturno)",
+    "endereco": "Av. Visconde de Souza Franco (Doca), Umarizal — Belém, PA. Funcionamento noturno: 18h30 às 00h30.",
+    "tags": [
+      "noturno",
+      "jantar",
+      "restaurante",
+      "comida típica",
+      "umarizal",
+      "música ao vivo"
     ]
   }
 ]

@@ -1,6 +1,7 @@
 """
 Visual Principal do BelémNaMão — Guia Inteligente
 Design Moderno, Clean, Profissional e Atrativo baseado no Design System oficial.
+Suporte completo a i18n (PT-BR, EN, ES), Modo Claro/Escuro, Ranking Dinâmico e MySQL.
 """
 import webbrowser
 from typing import Any, Dict, List, Optional
@@ -8,6 +9,21 @@ from typing import Any, Dict, List, Optional
 import customtkinter as ctk
 
 from services.catalogo import buscar_locais, carregar_locais, rotulo_preco
+from services.database import obter_ranking_locais_db
+from services.i18n import (
+    IDIOMAS_DISPONIVEIS,
+    ROTULOS_IDIOMA,
+    chave_preco_por_rotulo,
+    get_idioma,
+    lista_meses,
+    set_idioma,
+    t,
+    traduzir_categoria,
+    traduzir_categoria_desc,
+    traduzir_local,
+    traduzir_mes,
+    traduzir_preco_filtro,
+)
 from services.roteiro import adicionar, carregar_roteiro, limpar, remover, salvar_roteiro
 from views.theme import (
     AMBER,
@@ -19,18 +35,16 @@ from views.theme import (
     CATEGORIAS_INFO,
     ERROR,
     LINE,
-    LINE_LIGHT,
     PANEL,
     PANEL_SUBTLE,
     PRIMARY,
     PRIMARY_BTN,
     PRIMARY_CONTAINER,
     PRIMARY_HOVER,
-    PRIMARY_SOFT,
     SECONDARY,
-    SECONDARY_CONTAINER,
     SECONDARY_FIXED,
     SECONDARY_HOVER,
+    SEG_SELECTED_BG,
     SUCCESS,
     TAG_BG,
     TAG_BORDER,
@@ -38,10 +52,9 @@ from views.theme import (
     TERTIARY,
     TERTIARY_CONTAINER,
     TERTIARY_FIXED,
-    ON_TERTIARY_FIXED,
-    ON_TERTIARY_VARIANT,
     TEXT,
     TEXT_BRAND,
+    TEXT_EXPLORAR,
     TEXT_KPI,
     TEXT_LIGHT,
     TEXT_MUTED,
@@ -50,27 +63,55 @@ from views.theme import (
     obter_imagem_processada,
 )
 
-# Metadados e notas editoriais para enriquecer a experiência visual
-METADADOS_LOCAIS = {
+# Metadados e notas editoriais em PT-BR (traduzidos dinamicamente via i18n)
+METADADOS_LOCAIS: Dict[str, Dict[str, Any]] = {
     "ver-o-peso": {
         "rating": 4.8,
         "avaliacoes": "2.4k",
         "subtitulo": "A maior feira a céu aberto da América Latina • Foz do Guamá",
         "horario": "05h00 às 18h00 (Setor de peixes a partir das 03h00)",
         "melhor_horario": "Manhã cedo (07h às 09h30)",
-        "preco_tag": "$ • Acessível",
+        "preco_tag": "$ • Acessível / Entrada Gratuita",
         "destaque_tag": "Cultura & Gastronomia",
         "distancia": "0,5 km",
+        "destaques_cards": [
+            ("🥭", "Sabores Amazônicos", "Prove açaí fresco com peixe frito, tacacá, cupuaçu e queijos do Marajó."),
+            ("🌿", "Bancas de Ervas e Cheiros", "Ervas medicinais tradicionais, banhos aromáticos e especiarias regionais."),
+            ("⚓", "Mercado de Ferro (1901)", "Arquitetura histórica em ferro inglês ao lado dos barcos ribeirinhos."),
+            ("📸", "Patrimônio Vivo", "Torres icônicas e feira vibrante às margens da Baía do Guajará."),
+        ],
     },
     "estacao-das-docas": {
         "rating": 4.9,
         "avaliacoes": "3.1k",
-        "subtitulo": "Galpões portuários de ferro inglês restaurados de frente para o Guajará",
-        "horario": "10h00 às 00h00 (Sexta e Sábado até 01h00)",
-        "melhor_horario": "Fim de tarde / Pôr do sol (17h00)",
-        "preco_tag": "$$$ • Médio/Alto",
-        "destaque_tag": "Gastronomia & Lazer",
+        "subtitulo": "Galpões iluminados • Pôr do Sol, Bares e Vida Noturna no Guajará",
+        "horario": "10h00 às 00h00 • Destaque Noturno a partir das 18h (Sex/Sáb até 01h00)",
+        "melhor_horario": "Fim de tarde e Noite (17h30 às 23h30)",
+        "preco_tag": "$$$ • Alto",
+        "destaque_tag": "Vida Noturna & Gastronomia",
         "distancia": "0,9 km",
+        "destaques_cards": [
+            ("🌙", "Noite na Orla Iluminada", "Guindastes históricos iluminados, brisa da baía e música ao vivo à noite."),
+            ("🍺", "Cervejaria Amazônica", "Chopes artesanais regionais com sabores como bacuri, priprioca e açaí."),
+            ("🍽️", "Jantares na Baía", "Restaurantes renomados com pato no tucupi, filhote e frutos do mar."),
+            ("🎶", "Anfiteatro & Lazer", "Programação cultural noturna, sorveterias regionais e passeio seguro."),
+        ],
+    },
+    "bistro-guajara-noturno": {
+        "rating": 4.9,
+        "avaliacoes": "1.1k",
+        "subtitulo": "Alta gastronomia amazônica noturna e coquetelaria autoral • Umarizal",
+        "horario": "18h30 às 00h30 (Terça a Domingo — Exclusivo Noturno)",
+        "melhor_horario": "Jantar & Música ao Vivo (20h00 às 23h00)",
+        "preco_tag": "$$$ • Alto",
+        "destaque_tag": "Gastronomia Noturna",
+        "distancia": "2,3 km",
+        "destaques_cards": [
+            ("🍷", "Menu Noturno Amazônico", "Filhote na brasa, pato no tucupi, croquetes de maniçoba e sobremesas de cupuaçu."),
+            ("🍸", "Bar de Jambu & Taperebá", "Carta autoral de drinques noturnos com cachaça de jambu e botânicos da floresta."),
+            ("🎸", "Música Paraense ao Vivo", "Apresentações acústicas noturnas de carimbó contemporâneo e MPB amazônica."),
+            ("✨", "Polo Gastronômico da Doca", "Localizado no Umarizal, coração da vida noturna gastronômica de Belém."),
+        ],
     },
     "feliz-lusitania": {
         "rating": 4.9,
@@ -81,6 +122,12 @@ METADADOS_LOCAIS = {
         "preco_tag": "$ (R$ 6 / Terça Grátis)",
         "destaque_tag": "Patrimônio IPHAN",
         "distancia": "1,4 km",
+        "destaques_cards": [
+            ("🌅", "Mirante 360° da Baía", "Panorama deslumbrante das embarcações ribeirinhas e o pôr do sol amazônico."),
+            ("🏺", "Acervo e Memória Viva", "Cerâmicas marajoaras e vestígios de mais de 2.000 anos preservados."),
+            ("🛡️", "Artilharia e Muralhas", "Baterias de canhões históricos voltados para a entrada do estuário."),
+            ("🍲", "Cultura & Sabores", "Jardins e restaurante contíguo com o melhor da gastronomia regional."),
+        ],
     },
     "mangal": {
         "rating": 4.8,
@@ -88,9 +135,15 @@ METADADOS_LOCAIS = {
         "subtitulo": "Parque ecológico com borboletário gigante, farol e guarás",
         "horario": "08h00 às 18h00 (Fecha às segundas)",
         "melhor_horario": "Alimentação dos guarás às 11h15 e 15h00",
-        "preco_tag": "Parque Grátis (Espaços R$ 5)",
+        "preco_tag": "$$ • Parque Grátis (Espaços R$ 5)",
         "destaque_tag": "Natureza & Fauna",
         "distancia": "2,8 km",
+        "destaques_cards": [
+            ("🦩", "Guarás Vermelhos", "Aves amazônicas soltas entre lagos e passarelas ecológicas."),
+            ("🦋", "Borboletário & Orquidário", "Um dos maiores borboletários do Norte rodeado de espécies nativas."),
+            ("🗼", "Farol Mirante de 47m", "Vista panorâmica elevada do Rio Guamá e do centro histórico."),
+            ("🌿", "Flora Amazônica", "Trilhas sombreadas, vitórias-régias e espelhos d'água relaxantes."),
+        ],
     },
     "teatro-da-paz": {
         "rating": 4.9,
@@ -98,9 +151,15 @@ METADADOS_LOCAIS = {
         "subtitulo": "Joia neoclássica do Ciclo da Borracha na Praça da República",
         "horario": "Visitas guiadas: Terça a Domingo de hora em hora",
         "melhor_horario": "Tarde (15h00 — climatizado durante a chuva)",
-        "preco_tag": "$ (R$ 10 inteira / R$ 5 meia)",
+        "preco_tag": "$$ (R$ 10 inteira / R$ 5 meia)",
         "destaque_tag": "Arquitetura Imperial",
         "distancia": "1,8 km",
+        "destaques_cards": [
+            ("🎭", "Nobreza Neoclássica", "Escadarias em mármore de Carrara, lustres franceses e folhas de ouro."),
+            ("🎶", "Acústica de Ópera", "Salão histórico em ferradura com programação sinfônica e lírica."),
+            ("🎨", "Afrescos Amazônicos", "Pinturas no teto exaltando a mitologia e a natureza da Amazônia."),
+            ("🏛️", "Visitas Guiadas", "Imersão na história da Belle Époque paraense do século XIX."),
+        ],
     },
     "praca-republica": {
         "rating": 4.7,
@@ -108,9 +167,15 @@ METADADOS_LOCAIS = {
         "subtitulo": "Coração arborizado com mangueiras centenárias e feira aos domingos",
         "horario": "Acesso livre 24 horas",
         "melhor_horario": "Domingo de manhã (Feirinha de artesanato)",
-        "preco_tag": "Gratuito",
+        "preco_tag": "$ • Gratuito",
         "destaque_tag": "Caminhada & Lazer",
         "distancia": "1,7 km",
+        "destaques_cards": [
+            ("🌳", "Túnel de Mangueiras", "Sombra fresca sob árvores centenárias no coração de Belém."),
+            ("🛍️", "Feirinha de Domingo", "Artesanato paraense, cerâmica marajoara e comidas típicas."),
+            ("🗿", "Monumento à República", "Esculturas históricas em mármore cercadas por jardins."),
+            ("☕", "Vida Urbana & Cultura", "Em frente ao Theatro da Paz e próxima a cafés tradicionais."),
+        ],
     },
     "ilha-combu": {
         "rating": 4.8,
@@ -121,6 +186,12 @@ METADADOS_LOCAIS = {
         "preco_tag": "$$ • Médio",
         "destaque_tag": "Ribeirinho & Cacau",
         "distancia": "4,2 km (barco)",
+        "destaques_cards": [
+            ("🍫", "Chocolate da Floresta", "Visite produções familiares de cacau orgânico nativo do Combu."),
+            ("🚤", "Travessia de 15 min", "Navegação cênica pelo Rio Guamá observando palafitas e igarapés."),
+            ("🐟", "Decks sobre o Rio", "Restaurantes ribeirinhos com peixe fresco, caranguejo e açaí puro."),
+            ("🌴", "Trilhas de Várzea", "Contato com samaúmas gigantes e vegetação típica da várzea amazônica."),
+        ],
     },
     "basilica-nazare": {
         "rating": 4.9,
@@ -128,16 +199,22 @@ METADADOS_LOCAIS = {
         "subtitulo": "Santuário de Nossa Senhora de Nazaré e ápice do Círio",
         "horario": "06h00 às 20h00 diariamente",
         "melhor_horario": "Início da manhã ou final da tarde",
-        "preco_tag": "Gratuito",
+        "preco_tag": "$ • Gratuito",
         "destaque_tag": "Fé & Tradição",
         "distancia": "3,1 km",
+        "destaques_cards": [
+            ("⛪", "Arquitetura Romana", "Mármores policromados, mosaicos venezianos e vitrais europeus."),
+            ("🕯️", "Berço do Círio de Nazaré", "Centro espiritual da maior procissão mariana do Brasil."),
+            ("🏛️", "Praça Santuário", "Espaço arborizado com exposições e centro cultural anexo."),
+            ("🎵", "Acústica e Contemplação", "Órgão monumental e ambiente de serenidade durante todo o dia."),
+        ],
     },
 }
 
 
 class BelemNaMaoApp(ctk.CTk):
-    LARGURA = 1200
-    ALTURA = 780
+    LARGURA = 1220
+    ALTURA = 800
 
     def __init__(self, usuario: Optional[Dict[str, Any]] = None, on_logout: Optional[Any] = None):
         super().__init__()
@@ -145,21 +222,28 @@ class BelemNaMaoApp(ctk.CTk):
         self.usuario_id = self.usuario.get("id", 1)
         self.on_logout = on_logout
 
-        self.title("BelémNaMão — Guia Inteligente da Amazônia Atlântica")
+        self.title(t("app_title"))
         self.geometry(f"{self.LARGURA}x{self.ALTURA}")
-        self.minsize(1040, 640)
+        self.minsize(1060, 660)
         self.configure(fg_color=BG)
 
-        # Estado da Aplicação
+        # Estado da Aplicação (chaves canônicas independentes de idioma)
         self.locais = carregar_locais()
         self.roteiro = carregar_roteiro(usuario_id=self.usuario_id)
-        self.aba_atual = "Início"
+        self.aba_atual = "inicio"
+        self._local_detalhe_atual: Optional[Dict[str, Any]] = None
+        self._voltar_detalhe_atual = None
 
-        # Filtros de Catálogo
+        # Filtros de Catálogo (chaves canônicas)
         self.f_texto = ""
         self.f_categoria = "Todas"
         self.f_preco = "Qualquer"
-        self.f_bairro = "Todos os Bairros"
+        self.f_bairro = "Todos"
+
+        # Filtros da Tela "Mais Visitados"
+        self.ranking_periodo = "mes"
+        self.ranking_mes = 11
+        self.ranking_ano = 2026
 
         self._centralizar()
         self._configurar_grid()
@@ -168,6 +252,9 @@ class BelemNaMaoApp(ctk.CTk):
         # Container Principal com Troca Dinâmica de Telas
         self.conteudo = ctk.CTkFrame(self, fg_color=BG, corner_radius=0)
         self.conteudo.grid(row=1, column=0, sticky="nsew")
+
+        # Rodapé Discreto com Seletor de Idioma (PT-BR, EN, ES)
+        self._criar_rodape_idiomas()
 
         self.mostrar_inicio()
 
@@ -183,9 +270,10 @@ class BelemNaMaoApp(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=0)  # Navbar Superior
         self.grid_rowconfigure(1, weight=1)  # Conteúdo da Página
+        self.grid_rowconfigure(2, weight=0)  # Rodapé Discreto (Idiomas)
 
     # ==================================================================
-    # 1. Barra de Navegação Superior (Header Fixo Moderno)
+    # 1. Barra de Navegação Superior e Rodapé de Idiomas
     # ==================================================================
     def _criar_topo_navbar(self):
         self.navbar = ctk.CTkFrame(self, fg_color=PANEL, height=72, corner_radius=0, border_width=1, border_color=LINE)
@@ -199,7 +287,6 @@ class BelemNaMaoApp(ctk.CTk):
         esquerda = ctk.CTkFrame(inner, fg_color="transparent")
         esquerda.pack(side="left", fill="y")
 
-        # Botão/Logo Clicável
         logo_box = ctk.CTkFrame(esquerda, fg_color="transparent", cursor="hand2")
         logo_box.pack(side="left", pady=14)
         logo_box.bind("<Button-1>", lambda _e: self.mostrar_inicio())
@@ -218,36 +305,37 @@ class BelemNaMaoApp(ctk.CTk):
 
         # Widget de Clima e Maré em Tempo Real
         clima_pill = ctk.CTkFrame(esquerda, fg_color=PANEL_SUBTLE, corner_radius=8, border_width=1, border_color=LINE)
-        clima_pill.pack(side="left", padx=(18, 0), pady=16)
+        clima_pill.pack(side="left", padx=(14, 0), pady=16)
 
-        ctk.CTkLabel(
+        self.lbl_clima = ctk.CTkLabel(
             clima_pill,
-            text="🕒 Chuva das 16h: Provável (82%)  •  🌊 Maré: Enchendo",
+            text=t("clima_pill"),
             font=fonte(11, "bold"),
             text_color=TEXT_BRAND,
-            padx=14,
+            padx=12,
             pady=4,
-        ).pack()
+        )
+        self.lbl_clima.pack()
 
-        # Centro: Menu Pill de Navegação
+        # Centro: Menu Pill de Navegação (substitui "Sobre Belém" por "Mais Visitados")
         centro = ctk.CTkFrame(inner, fg_color="transparent")
         centro.pack(side="left", expand=True)
 
-        self.nav_botoes = {}
+        self.nav_botoes: Dict[str, ctk.CTkButton] = {}
         itens_nav = [
-            ("Início", self.mostrar_inicio),
-            ("Explorar", self.mostrar_explorar),
-            ("Meu Roteiro", self.mostrar_roteiro),
-            ("Sobre Belém", self.mostrar_sobre_belem),
+            ("inicio", "nav_inicio", self.mostrar_inicio),
+            ("explorar", "nav_explorar", self.mostrar_explorar),
+            ("roteiro", "nav_roteiro", self.mostrar_roteiro),
+            ("ranking", "nav_ranking", self.mostrar_mais_visitados),
         ]
 
         nav_pill_container = ctk.CTkFrame(centro, fg_color=PANEL_SUBTLE, corner_radius=8, border_width=1, border_color=LINE)
         nav_pill_container.pack(pady=16)
 
-        for nome, cmd in itens_nav:
+        for chave, i18n_key, cmd in itens_nav:
             btn = ctk.CTkButton(
                 nav_pill_container,
-                text=nome,
+                text=t(i18n_key),
                 font=fonte(13, "bold"),
                 height=34,
                 corner_radius=8,
@@ -257,16 +345,15 @@ class BelemNaMaoApp(ctk.CTk):
                 command=cmd,
             )
             btn.pack(side="left", padx=3, pady=3)
-            self.nav_botoes[nome] = btn
+            self.nav_botoes[chave] = btn
 
-        # Direita: Botão Rápido de Salvos + Perfil do Usuário
+        # Direita: Botões Rápidos + Perfil
         direita = ctk.CTkFrame(inner, fg_color="transparent")
         direita.pack(side="right", fill="y", pady=16)
 
-        # Botão de Busca Rápida
-        btn_busca = ctk.CTkButton(
+        self.btn_busca_nav = ctk.CTkButton(
             direita,
-            text="🔍 Buscar...",
+            text=t("btn_buscar_nav"),
             height=34,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -277,12 +364,11 @@ class BelemNaMaoApp(ctk.CTk):
             font=fonte(12),
             command=self.mostrar_explorar,
         )
-        btn_busca.pack(side="left", padx=(0, 8))
+        self.btn_busca_nav.pack(side="left", padx=(0, 8))
 
-        # Indicador de Salvos
         self.btn_salvos_pill = ctk.CTkButton(
             direita,
-            text=f"🔖 {len(self.roteiro)} salvos",
+            text=t("btn_salvos_nav", n=len(self.roteiro)),
             height=34,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -295,9 +381,8 @@ class BelemNaMaoApp(ctk.CTk):
         )
         self.btn_salvos_pill.pack(side="left", padx=(0, 8))
 
-        # Botão Modo Escuro / Modo Claro
         modo_atual = ctk.get_appearance_mode().lower()
-        texto_tema = "☀️ Modo Claro" if modo_atual == "dark" else "🌙 Modo Escuro"
+        texto_tema = t("tema_claro") if modo_atual == "dark" else t("tema_escuro")
         self.btn_tema = ctk.CTkButton(
             direita,
             text=texto_tema,
@@ -313,7 +398,6 @@ class BelemNaMaoApp(ctk.CTk):
         )
         self.btn_tema.pack(side="left", padx=(0, 8))
 
-        # Perfil do Visitante
         perfil_box = ctk.CTkFrame(direita, fg_color=PANEL_SUBTLE, corner_radius=8, border_width=1, border_color=LINE)
         perfil_box.pack(side="left", padx=(0, 8))
 
@@ -323,14 +407,17 @@ class BelemNaMaoApp(ctk.CTk):
         ctk.CTkLabel(avatar, text="👤", font=fonte(11), text_color="#FFFFFF").pack(expand=True)
 
         nome_user = self.usuario.get("nome", "Turista").split()[0]
-        ctk.CTkLabel(perfil_box, text=f"Olá, {nome_user}", font=fonte(12, "bold"), text_color=TEXT_TITLE).pack(
-            side="left", padx=(0, 10)
+        self.lbl_ola_user = ctk.CTkLabel(
+            perfil_box,
+            text=t("ola_usuario", nome=nome_user),
+            font=fonte(12, "bold"),
+            text_color=TEXT_TITLE,
         )
+        self.lbl_ola_user.pack(side="left", padx=(0, 10))
 
-        # Botão Sair / Logout
-        btn_sair = ctk.CTkButton(
+        self.btn_sair_nav = ctk.CTkButton(
             direita,
-            text="🚪 Sair",
+            text=t("btn_sair"),
             width=64,
             height=34,
             corner_radius=8,
@@ -342,19 +429,128 @@ class BelemNaMaoApp(ctk.CTk):
             font=fonte(11, "bold"),
             command=self._fazer_logout,
         )
-        btn_sair.pack(side="left")
+        self.btn_sair_nav.pack(side="left")
+
+    def _criar_rodape_idiomas(self):
+        """Cria um rodapé discreto e acessível com seletor de idioma (PT-BR, EN, ES)."""
+        self.footer = ctk.CTkFrame(self, fg_color=PANEL, height=40, corner_radius=0, border_width=1, border_color=LINE)
+        self.footer.grid(row=2, column=0, sticky="ew")
+        self.footer.grid_propagate(False)
+
+        inner = ctk.CTkFrame(self.footer, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=24)
+
+        self.lbl_rodape_info = ctk.CTkLabel(
+            inner,
+            text=t("rodape_texto"),
+            font=fonte(11),
+            text_color=TEXT_MUTED,
+        )
+        self.lbl_rodape_info.pack(side="left")
+
+        lang_box = ctk.CTkFrame(inner, fg_color="transparent")
+        lang_box.pack(side="right", pady=5)
+
+        self.lbl_idioma_rodape = ctk.CTkLabel(
+            lang_box,
+            text=f"🌐 {t('idioma_label')}",
+            font=fonte(11, "bold"),
+            text_color=TEXT_MUTED,
+        )
+        self.lbl_idioma_rodape.pack(side="left", padx=(0, 8))
+
+        self.lang_botoes: Dict[str, ctk.CTkButton] = {}
+        idioma_ativo = get_idioma()
+        for codigo in IDIOMAS_DISPONIVEIS:
+            ativo = codigo == idioma_ativo
+            btn = ctk.CTkButton(
+                lang_box,
+                text=ROTULOS_IDIOMA[codigo],
+                width=52,
+                height=26,
+                corner_radius=6,
+                fg_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BG,
+                hover_color=PRIMARY_HOVER if ativo else BTN_SECONDARY_HOVER,
+                border_width=1,
+                border_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BORDER,
+                text_color="#FFFFFF" if ativo else BTN_SECONDARY_TEXT,
+                font=fonte(11, "bold"),
+                command=lambda c=codigo: self._alterar_idioma(c),
+            )
+            btn.pack(side="left", padx=2)
+            self.lang_botoes[codigo] = btn
+
+    def _atualizar_textos_fixos(self):
+        """Atualiza imediatamente todos os textos da barra superior e rodapé após troca de idioma."""
+        self.title(t("app_title"))
+        self.lbl_clima.configure(text=t("clima_pill"))
+
+        mapa_nav = {
+            "inicio": "nav_inicio",
+            "explorar": "nav_explorar",
+            "roteiro": "nav_roteiro",
+            "ranking": "nav_ranking",
+        }
+        for chave, i18n_key in mapa_nav.items():
+            if chave in self.nav_botoes:
+                self.nav_botoes[chave].configure(text=t(i18n_key))
+
+        self.btn_busca_nav.configure(text=t("btn_buscar_nav"))
+        self.btn_salvos_pill.configure(text=t("btn_salvos_nav", n=len(self.roteiro)))
+
+        modo_atual = ctk.get_appearance_mode().lower()
+        self.btn_tema.configure(text=t("tema_claro") if modo_atual == "dark" else t("tema_escuro"))
+
+        nome_user = self.usuario.get("nome", "Turista").split()[0]
+        self.lbl_ola_user.configure(text=t("ola_usuario", nome=nome_user))
+        self.btn_sair_nav.configure(text=t("btn_sair"))
+
+        self.lbl_rodape_info.configure(text=t("rodape_texto"))
+        self.lbl_idioma_rodape.configure(text=f"🌐 {t('idioma_label')}")
+
+        idioma_ativo = get_idioma()
+        for codigo, btn in self.lang_botoes.items():
+            ativo = codigo == idioma_ativo
+            btn.configure(
+                fg_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BG,
+                hover_color=PRIMARY_HOVER if ativo else BTN_SECONDARY_HOVER,
+                border_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BORDER,
+                text_color="#FFFFFF" if ativo else BTN_SECONDARY_TEXT,
+            )
+
+    def _alterar_idioma(self, codigo: str):
+        """Alterna o idioma em tempo real mantendo estado, tela atual e dados."""
+        if get_idioma() == codigo:
+            return
+        set_idioma(codigo)
+        self._atualizar_textos_fixos()
+
+        if self.aba_atual == "inicio":
+            self.mostrar_inicio()
+        elif self.aba_atual == "explorar":
+            self.mostrar_explorar()
+        elif self.aba_atual == "roteiro":
+            self.mostrar_roteiro()
+        elif self.aba_atual == "ranking":
+            self.mostrar_mais_visitados()
+        elif self.aba_atual == "detalhes" and self._local_detalhe_atual is not None:
+            self.mostrar_detalhes(self._local_detalhe_atual, voltar=self._voltar_detalhe_atual)
+        else:
+            self.mostrar_inicio()
+
+        self._toast(t("toast_idioma"), cor_bg=PRIMARY)
 
     def _alternar_modo_escuro(self):
         """Alterna reativamente entre Modo Claro e Modo Escuro."""
         modo_atual = ctk.get_appearance_mode().lower()
         if modo_atual == "dark":
             ctk.set_appearance_mode("light")
-            self.btn_tema.configure(text="🌙 Modo Escuro")
-            self._toast("Modo Claro ativado")
+            self.btn_tema.configure(text=t("tema_escuro"))
+            self._toast(t("toast_tema_claro"))
         else:
             ctk.set_appearance_mode("dark")
-            self.btn_tema.configure(text="☀️ Modo Claro")
-            self._toast("Modo Escuro ativado", cor_bg=TERTIARY_CONTAINER)
+            self.btn_tema.configure(text=t("tema_claro"))
+            self._toast(t("toast_tema_escuro"), cor_bg=TERTIARY_CONTAINER)
 
     def _fazer_logout(self):
         """Encerra a sessão e retorna à tela de login."""
@@ -363,18 +559,17 @@ class BelemNaMaoApp(ctk.CTk):
         else:
             self.destroy()
 
-    def _marcar_aba_ativa(self, nome_aba: str):
+    def _marcar_aba_ativa(self, chave_aba: str):
         """Atualiza a aparência dos botões de navegação para a aba selecionada."""
-        self.aba_atual = nome_aba
-        for n, btn in self.nav_botoes.items():
-            ativo = n == nome_aba
+        self.aba_atual = chave_aba
+        for chave, btn in self.nav_botoes.items():
+            ativo = chave == chave_aba
             btn.configure(
                 fg_color=PRIMARY_CONTAINER if ativo else "transparent",
                 text_color="#FFFFFF" if ativo else TEXT_MUTED,
             )
-        # Atualiza contagem de itens salvos
         if hasattr(self, "btn_salvos_pill"):
-            self.btn_salvos_pill.configure(text=f"🔖 {len(self.roteiro)} salvos")
+            self.btn_salvos_pill.configure(text=t("btn_salvos_nav", n=len(self.roteiro)))
 
     def _limpar_conteudo(self):
         """Remove widgets da página anterior com limpeza limpa de memória."""
@@ -384,7 +579,7 @@ class BelemNaMaoApp(ctk.CTk):
     def _toast(self, mensagem: str, cor_bg: str = PRIMARY):
         """Exibe uma notificação flutuante elegante no canto inferior."""
         toast = ctk.CTkFrame(self, fg_color=cor_bg, corner_radius=16, border_width=1, border_color="#314868")
-        toast.place(relx=0.98, rely=0.95, anchor="se")
+        toast.place(relx=0.98, rely=0.92, anchor="se")
 
         ctk.CTkLabel(
             toast,
@@ -401,11 +596,11 @@ class BelemNaMaoApp(ctk.CTk):
         return any(i.get("id") == local.get("id") for i in self.roteiro)
 
     # ==================================================================
-    # 2. Tela Início (Hero Showcase, Clima, Categorias e Destaques)
+    # 2. Tela Início (Hero Showcase, Categorias e Destaques)
     # ==================================================================
     def mostrar_inicio(self):
         self._limpar_conteudo()
-        self._marcar_aba_ativa("Início")
+        self._marcar_aba_ativa("inicio")
 
         rolagem = ctk.CTkScrollableFrame(self.conteudo, fg_color="transparent", corner_radius=0)
         rolagem.pack(fill="both", expand=True)
@@ -422,7 +617,7 @@ class BelemNaMaoApp(ctk.CTk):
 
         ctk.CTkLabel(
             hero_content,
-            text="Descubra Belém do seu jeito",
+            text=t("hero_titulo"),
             font=fonte(32, "bold"),
             text_color="#FFFFFF",
             justify="left",
@@ -431,20 +626,19 @@ class BelemNaMaoApp(ctk.CTk):
 
         ctk.CTkLabel(
             hero_content,
-            text="Menos tempo procurando. Mais tempo vivendo as feiras, docas e sabores da Amazônia Atlântica.",
+            text=t("hero_subtitulo"),
             font=fonte(14),
             text_color="#D5E3FF",
             justify="left",
             anchor="w",
         ).pack(anchor="w", pady=(0, 18))
 
-        # Botões de Ação do Hero
         hero_actions = ctk.CTkFrame(hero_content, fg_color="transparent")
         hero_actions.pack(anchor="w")
 
         ctk.CTkButton(
             hero_actions,
-            text="Explorar Catálogo  →",
+            text=t("hero_btn_explorar"),
             height=40,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -458,7 +652,7 @@ class BelemNaMaoApp(ctk.CTk):
 
         ctk.CTkButton(
             hero_actions,
-            text="Ver Meu Roteiro",
+            text=t("hero_btn_roteiro"),
             height=40,
             corner_radius=8,
             fg_color=SECONDARY,
@@ -468,8 +662,8 @@ class BelemNaMaoApp(ctk.CTk):
             command=self.mostrar_roteiro,
         ).pack(side="left")
 
-        # --- B. Categorias Bento (O que você quer fazer?) ---
-        ctk.CTkLabel(inner, text="O que você quer fazer?", font=fonte(22, "bold"), text_color=TEXT_TITLE).pack(
+        # --- B. Categorias Bento ---
+        ctk.CTkLabel(inner, text=t("inicio_cats_titulo"), font=fonte(22, "bold"), text_color=TEXT_TITLE).pack(
             anchor="w", pady=(4, 14)
         )
 
@@ -496,11 +690,21 @@ class BelemNaMaoApp(ctk.CTk):
             tile_emoji.pack_propagate(False)
             ctk.CTkLabel(tile_emoji, text=info["emoji"], font=fonte(22)).pack(expand=True)
 
-            ctk.CTkLabel(c_box, text=nome_cat, font=fonte(16, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
-            ctk.CTkLabel(c_box, text=info["desc"], font=fonte(12), text_color=TEXT_MUTED).pack(anchor="w", pady=(2, 6))
             ctk.CTkLabel(
                 c_box,
-                text=f"{info['qtd']} experiências",
+                text=traduzir_categoria(nome_cat),
+                font=fonte(16, "bold"),
+                text_color=TEXT_TITLE,
+            ).pack(anchor="w")
+            ctk.CTkLabel(
+                c_box,
+                text=traduzir_categoria_desc(nome_cat) or info["desc"],
+                font=fonte(12),
+                text_color=TEXT_MUTED,
+            ).pack(anchor="w", pady=(2, 6))
+            ctk.CTkLabel(
+                c_box,
+                text=t("cat_experiencias", qtd=info["qtd"]),
                 font=fonte(11, "bold"),
                 text_color=SECONDARY,
             ).pack(anchor="w")
@@ -508,15 +712,15 @@ class BelemNaMaoApp(ctk.CTk):
             for w in (c_card, c_box, *c_box.winfo_children(), tile_emoji, *tile_emoji.winfo_children()):
                 w.bind("<Button-1>", lambda _e, cat=nome_cat: self._filtrar_por_categoria(cat))
 
-        # --- C. Destaques Imperdíveis (Cards com Foto Real) ---
+        # --- C. Destaques Imperdíveis ---
         topo_destaques = ctk.CTkFrame(inner, fg_color="transparent")
         topo_destaques.pack(fill="x", pady=(0, 14))
-        ctk.CTkLabel(topo_destaques, text="Destaques de Belém", font=fonte(22, "bold"), text_color=TEXT_TITLE).pack(
+        ctk.CTkLabel(topo_destaques, text=t("inicio_destaques_titulo"), font=fonte(22, "bold"), text_color=TEXT_TITLE).pack(
             side="left"
         )
         ctk.CTkButton(
             topo_destaques,
-            text="Ver todas as atrações  →",
+            text=t("inicio_destaques_ver_todas"),
             fg_color="transparent",
             text_color=TEXT_BRAND,
             hover_color=PANEL_SUBTLE,
@@ -528,17 +732,19 @@ class BelemNaMaoApp(ctk.CTk):
         grade_destaques.pack(fill="x", pady=(0, 28))
         grade_destaques.grid_columnconfigure((0, 1, 2), weight=1, uniform="destaque_col")
 
-        # Selecionar os 3 principais monumentos para o card bento
-        destaques_cards = [l for l in self.locais if l.get("id") in ["ver-o-peso", "feliz-lusitania", "estacao-das-docas"]][:3]
-        for i, loc in enumerate(destaques_cards):
+        destaques_cards = [l for l in self.locais if l.get("id") in ["ver-o-peso", "estacao-das-docas", "bistro-guajara-noturno"]]
+        if len(destaques_cards) < 3:
+            destaques_cards = [l for l in self.locais if l.get("id") in ["ver-o-peso", "feliz-lusitania", "estacao-das-docas"]][:3]
+        for i, loc in enumerate(destaques_cards[:3]):
             self._criar_card_destaque(grade_destaques, loc, coluna=i)
 
     def _criar_card_destaque(self, master, local: Dict[str, Any], coluna: int):
         meta = METADADOS_LOCAIS.get(local.get("id", ""), {})
+        loc_t = traduzir_local(local, meta)
+
         card = ctk.CTkFrame(master, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE, cursor="hand2")
         card.grid(row=0, column=coluna, padx=6, sticky="nsew")
 
-        # Foto uniforme 16:9 ocupando toda a largura útil sem sobras
         img_ctk = obter_imagem_processada(local.get("id", ""), 360, 202, raio=12, apenas_topo=True)
         lbl_img = ctk.CTkLabel(card, text="", image=img_ctk)
         lbl_img.pack(side="top", fill="x", padx=0, pady=0)
@@ -546,15 +752,15 @@ class BelemNaMaoApp(ctk.CTk):
         corpo = ctk.CTkFrame(card, fg_color="transparent")
         corpo.pack(side="top", fill="both", expand=True, padx=16, pady=14)
 
-        # Linha de Metadados (Categoria + Avaliação)
         meta_row = ctk.CTkFrame(corpo, fg_color="transparent")
         meta_row.pack(fill="x", pady=(2, 6))
 
         tag_cat = ctk.CTkFrame(meta_row, fg_color=TAG_BG, corner_radius=6, border_width=1, border_color=TAG_BORDER)
         tag_cat.pack(side="left")
+        tag_txt = loc_t.get("destaque_tag") or traduzir_categoria(local.get("categoria", ["Passeio"])[0])
         ctk.CTkLabel(
             tag_cat,
-            text=meta.get("destaque_tag", local.get("categoria", ["Turismo"])[0]),
+            text=tag_txt,
             font=fonte(10, "bold"),
             text_color=TAG_TEXT,
             padx=8,
@@ -571,9 +777,9 @@ class BelemNaMaoApp(ctk.CTk):
         ctk.CTkLabel(corpo, text=local["nome"], font=fonte(16, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
 
         dist = meta.get("distancia", "1,4 km")
-        dur = local.get("duracao", "2h")
+        dur = loc_t.get("duracao", local.get("duracao", "2h"))
         bairro = local.get("bairro", "Belém")
-        preco = meta.get("preco_tag", rotulo_preco(local.get("preco")))
+        preco = loc_t.get("preco_tag", rotulo_preco(local.get("preco")))
         ctk.CTkLabel(
             corpo,
             text=f"📍 {bairro} • {dist} • {dur}   |   {preco}",
@@ -581,7 +787,7 @@ class BelemNaMaoApp(ctk.CTk):
             text_color=TEXT_BRAND,
         ).pack(anchor="w", pady=(2, 6))
 
-        desc = local.get("descricao", "")
+        desc = loc_t.get("descricao", "")
         if len(desc) > 95:
             desc = desc[:92] + "..."
         ctk.CTkLabel(
@@ -593,14 +799,13 @@ class BelemNaMaoApp(ctk.CTk):
             wraplength=310,
         ).pack(anchor="w", pady=(0, 10))
 
-        # Botões de Ação fixos na base do card
         botoes = ctk.CTkFrame(corpo, fg_color="transparent")
         botoes.pack(side="bottom", fill="x")
 
         presente = self._no_roteiro(local)
         btn_it = ctk.CTkButton(
             botoes,
-            text="✓ No Roteiro" if presente else "+ Roteiro",
+            text=t("btn_no_roteiro") if presente else t("btn_add_roteiro"),
             height=36,
             corner_radius=8,
             fg_color=TERTIARY_CONTAINER if presente else PRIMARY_BTN,
@@ -608,12 +813,12 @@ class BelemNaMaoApp(ctk.CTk):
             text_color="#FFFFFF",
             font=fonte(12, "bold"),
         )
-        btn_it.configure(command=lambda l=local, b=btn_it: self.alternar_roteiro_btn(l, b))
+        btn_it.configure(command=lambda l=local, b=btn_it: self.alternar_roteiro_btn(l, b, estilo="card"))
         btn_it.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
         ctk.CTkButton(
             botoes,
-            text="Detalhes",
+            text=t("btn_detalhes"),
             height=36,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -625,7 +830,6 @@ class BelemNaMaoApp(ctk.CTk):
             command=lambda l=local: self.mostrar_detalhes(l, voltar=self.mostrar_inicio),
         ).pack(side="right")
 
-        # Clique no card abre detalhes
         for w in (card, lbl_img, corpo):
             w.bind("<Button-1>", lambda _e, l=local: self.mostrar_detalhes(l, voltar=self.mostrar_inicio))
 
@@ -634,11 +838,11 @@ class BelemNaMaoApp(ctk.CTk):
         self.mostrar_explorar()
 
     # ==================================================================
-    # 3. Tela Explorar (Catálogo em Grade, Filtros por Bairro/Preço e Busca)
+    # 3. Tela Explorar (Alto Contraste #FFFFFF em Tema Escuro + Filtros)
     # ==================================================================
     def mostrar_explorar(self):
         self._limpar_conteudo()
-        self._marcar_aba_ativa("Explorar")
+        self._marcar_aba_ativa("explorar")
 
         rolagem = ctk.CTkScrollableFrame(self.conteudo, fg_color="transparent", corner_radius=0)
         rolagem.pack(fill="both", expand=True)
@@ -653,20 +857,20 @@ class BelemNaMaoApp(ctk.CTk):
         topo_esq = ctk.CTkFrame(topo, fg_color="transparent")
         topo_esq.pack(side="left")
 
-        ctk.CTkLabel(topo_esq, text="EXPLORAR PARÁ", font=fonte(11, "bold"), text_color=SECONDARY).pack(anchor="w")
-        ctk.CTkLabel(topo_esq, text="Explorar Belém", font=fonte(28, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
+        ctk.CTkLabel(topo_esq, text=t("explorar_eyebrow"), font=fonte(11, "bold"), text_color=SECONDARY).pack(anchor="w")
+        ctk.CTkLabel(topo_esq, text=t("explorar_titulo"), font=fonte(28, "bold"), text_color=TEXT_EXPLORAR).pack(anchor="w")
         ctk.CTkLabel(
             topo_esq,
-            text="Descubra os pontos turísticos, feiras culturais, gastronomia ribeirinha e recantos históricos.",
+            text=t("explorar_subtitulo"),
             font=fonte(13),
-            text_color=TEXT_MUTED,
+            text_color=TEXT_EXPLORAR,
         ).pack(anchor="w")
 
         # Barra de Pesquisa Flutuante
         barra_busca = ctk.CTkFrame(inner, fg_color=PANEL, corner_radius=8, border_width=1, border_color=LINE)
         barra_busca.pack(fill="x", pady=(0, 12))
 
-        ctk.CTkLabel(barra_busca, text="🔍", font=fonte(16)).pack(side="left", padx=(16, 6), pady=12)
+        ctk.CTkLabel(barra_busca, text="🔍", font=fonte(16), text_color=TEXT_EXPLORAR).pack(side="left", padx=(16, 6), pady=12)
 
         self.entry_busca = ctk.CTkEntry(
             barra_busca,
@@ -674,8 +878,8 @@ class BelemNaMaoApp(ctk.CTk):
             corner_radius=0,
             fg_color="transparent",
             border_width=0,
-            text_color=TEXT,
-            placeholder_text="Buscar por nome, bairro (ex: Cidade Velha, Campina) ou palavra-chave...",
+            text_color=TEXT_EXPLORAR,
+            placeholder_text=t("explorar_busca_placeholder"),
             placeholder_text_color=TEXT_LIGHT,
             font=fonte(14),
         )
@@ -692,35 +896,35 @@ class BelemNaMaoApp(ctk.CTk):
             fg_color=BTN_SECONDARY_BG,
             border_width=1,
             border_color=BTN_SECONDARY_BORDER,
-            text_color=BTN_SECONDARY_TEXT,
+            text_color=TEXT_EXPLORAR,
             hover_color=BTN_SECONDARY_HOVER,
             font=fonte(12, "bold"),
             command=self._limpar_campo_busca,
         )
         btn_limpar_busca.pack(side="right", padx=(6, 12))
 
-        # Carrossel de Categorias (Pills Horizontais)
+        # Carrossel de Categorias
         chips_frame = ctk.CTkFrame(inner, fg_color="transparent")
         chips_frame.pack(fill="x", pady=(0, 12))
 
-        self.chips_botoes = {}
-        for nome_c in ["Todas", *CATEGORIAS_INFO.keys()]:
-            ativo = nome_c == self.f_categoria
+        self.chips_botoes: Dict[str, ctk.CTkButton] = {}
+        for chave_c in ["Todas", *CATEGORIAS_INFO.keys()]:
+            ativo = chave_c == self.f_categoria
             btn_c = ctk.CTkButton(
                 chips_frame,
-                text=nome_c,
+                text=traduzir_categoria(chave_c),
                 height=34,
                 corner_radius=8,
                 fg_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BG,
-                text_color="#FFFFFF" if ativo else BTN_SECONDARY_TEXT,
+                text_color="#FFFFFF" if ativo else TEXT_EXPLORAR,
                 border_width=1,
                 border_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BORDER,
                 hover_color=PRIMARY_HOVER if ativo else BTN_SECONDARY_HOVER,
                 font=fonte(12, "bold"),
-                command=lambda n=nome_c: self._selecionar_categoria_chip(n),
+                command=lambda n=chave_c: self._selecionar_categoria_chip(n),
             )
             btn_c.pack(side="left", padx=(0, 8))
-            self.chips_botoes[nome_c] = btn_c
+            self.chips_botoes[chave_c] = btn_c
 
         # Barra Secundária de Filtros (Preço, Bairro e Contador)
         barra_filtros = ctk.CTkFrame(inner, fg_color=PANEL_SUBTLE, corner_radius=12, border_width=1, border_color=LINE)
@@ -729,47 +933,58 @@ class BelemNaMaoApp(ctk.CTk):
         bf_inner = ctk.CTkFrame(barra_filtros, fg_color="transparent")
         bf_inner.pack(fill="both", expand=True, padx=16, pady=10)
 
-        # Filtro de Preço
-        ctk.CTkLabel(bf_inner, text="Preço:", font=fonte(12, "bold"), text_color=TEXT_MUTED).pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(bf_inner, text=t("explorar_preco_label"), font=fonte(12, "bold"), text_color=TEXT_EXPLORAR).pack(
+            side="left", padx=(0, 8)
+        )
+        opcoes_preco = [traduzir_preco_filtro(k) for k in ("Qualquer", "Baixo", "Médio", "Alto")]
         self.seg_preco = ctk.CTkSegmentedButton(
             bf_inner,
-            values=["Qualquer", "$ Econômico", "$$ Médio", "$$$ Alto"],
+            values=opcoes_preco,
             height=32,
             corner_radius=8,
             fg_color=PANEL,
-            selected_color=PRIMARY_BTN,
+            selected_color=SEG_SELECTED_BG,
             selected_hover_color=PRIMARY_HOVER,
             unselected_color=PANEL,
             unselected_hover_color=PANEL_SUBTLE,
-            text_color=TEXT,
+            text_color=TEXT_EXPLORAR,
             font=fonte(11, "bold"),
             command=self._filtrar_preco,
         )
-        self.seg_preco.set(self.f_preco)
+        self.seg_preco.set(traduzir_preco_filtro(self.f_preco))
         self.seg_preco.pack(side="left", padx=(0, 16))
 
-        # Filtro de Bairros
-        bairros = ["Todos os Bairros", "Cidade Velha", "Campina", "Nazaré", "Região insular"]
+        # Filtro de Bairros (inclui Umarizal)
+        todos_bairros_label = t("filtro_todos_bairros")
+        self._bairros_mapa_display = {
+            todos_bairros_label: "Todos",
+            "Cidade Velha": "Cidade Velha",
+            "Campina": "Campina",
+            "Nazaré": "Nazaré",
+            "Umarizal": "Umarizal",
+            "Região insular": "Região insular",
+        }
+        bairros_exibidos = list(self._bairros_mapa_display.keys())
         self.menu_bairro = ctk.CTkOptionMenu(
             bf_inner,
-            values=bairros,
+            values=bairros_exibidos,
             height=32,
             corner_radius=8,
             fg_color=PANEL,
             button_color=PANEL_SUBTLE,
             button_hover_color=LINE,
-            text_color=TEXT,
+            text_color=TEXT_EXPLORAR,
             font=fonte(12),
             command=self._filtrar_bairro,
         )
-        self.menu_bairro.set(self.f_bairro)
+        display_bairro_atual = todos_bairros_label if self.f_bairro == "Todos" else self.f_bairro
+        self.menu_bairro.set(display_bairro_atual)
         self.menu_bairro.pack(side="left")
 
         # Indicador de Resultados
-        self.lbl_contagem = ctk.CTkLabel(bf_inner, text="", font=fonte(12), text_color=TEXT_MUTED)
+        self.lbl_contagem = ctk.CTkLabel(bf_inner, text="", font=fonte(12, "bold"), text_color=TEXT_EXPLORAR)
         self.lbl_contagem.pack(side="right")
 
-        # Container onde são inseridos os cards ou o mapa
         self.container_cards = ctk.CTkFrame(inner, fg_color="transparent")
         self.container_cards.pack(fill="both", expand=True)
 
@@ -787,17 +1002,17 @@ class BelemNaMaoApp(ctk.CTk):
             ativo = n == nome_c
             btn.configure(
                 fg_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BG,
-                text_color="#FFFFFF" if ativo else BTN_SECONDARY_TEXT,
+                text_color="#FFFFFF" if ativo else TEXT_EXPLORAR,
                 border_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BORDER,
             )
         self._renderizar_catalogo()
 
-    def _filtrar_preco(self, valor: str):
-        self.f_preco = valor
+    def _filtrar_preco(self, rotulo: str):
+        self.f_preco = chave_preco_por_rotulo(rotulo)
         self._renderizar_catalogo()
 
-    def _filtrar_bairro(self, valor: str):
-        self.f_bairro = valor
+    def _filtrar_bairro(self, valor_exibido: str):
+        self.f_bairro = self._bairros_mapa_display.get(valor_exibido, valor_exibido)
         self._renderizar_catalogo()
 
     def _renderizar_catalogo(self):
@@ -805,29 +1020,17 @@ class BelemNaMaoApp(ctk.CTk):
             w.destroy()
 
         self.f_texto = self.entry_busca.get().strip()
+        encontrados = buscar_locais(self.locais, self.f_texto, self.f_categoria, self.f_preco)
 
-        # Normalizar filtro de preço para o service
-        mapa_preco_filtro = {
-            "Qualquer": "Qualquer",
-            "$ Econômico": "Baixo",
-            "$$ Médio": "Médio",
-            "$$$ Alto": "Alto",
-        }
-        preco_norm = mapa_preco_filtro.get(self.f_preco, "Qualquer")
-
-        encontrados = buscar_locais(self.locais, self.f_texto, self.f_categoria, preco_norm)
-
-        # Filtro adicional de Bairro
-        if self.f_bairro != "Todos os Bairros":
+        if self.f_bairro != "Todos":
             encontrados = [l for l in encontrados if l.get("bairro", "").casefold() == self.f_bairro.casefold()]
 
-        self.lbl_contagem.configure(text=f"Mostrando {len(encontrados)} de {len(self.locais)} locais")
+        self.lbl_contagem.configure(text=t("explorar_contagem", n=len(encontrados), total=len(self.locais)))
 
         if not encontrados:
             self._criar_estado_vazio(self.container_cards)
             return
 
-        # Renderizar Grade de Cards em 3 Colunas
         grid = ctk.CTkFrame(self.container_cards, fg_color="transparent")
         grid.pack(fill="x")
         grid.grid_columnconfigure((0, 1, 2), weight=1, uniform="grid_locais")
@@ -839,10 +1042,11 @@ class BelemNaMaoApp(ctk.CTk):
 
     def _criar_card_catalogo(self, master, local: Dict[str, Any], row: int, col: int):
         meta = METADADOS_LOCAIS.get(local.get("id", ""), {})
+        loc_t = traduzir_local(local, meta)
+
         card = ctk.CTkFrame(master, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE, cursor="hand2")
         card.grid(row=row, column=col, padx=6, pady=8, sticky="nsew")
 
-        # Imagem uniforme 16:9 ocupando toda a largura útil sem sobras
         img_ctk = obter_imagem_processada(local.get("id", ""), 360, 202, raio=12, apenas_topo=True)
         lbl_img = ctk.CTkLabel(card, text="", image=img_ctk)
         lbl_img.pack(side="top", fill="x", padx=0, pady=0)
@@ -850,17 +1054,17 @@ class BelemNaMaoApp(ctk.CTk):
         corpo = ctk.CTkFrame(card, fg_color="transparent")
         corpo.pack(side="top", fill="both", expand=True, padx=16, pady=14)
 
-        # Linha de Badges (Categoria + Avaliação)
         meta_row = ctk.CTkFrame(corpo, fg_color="transparent")
         meta_row.pack(fill="x", pady=(2, 6))
 
         tag_cat = ctk.CTkFrame(meta_row, fg_color=TAG_BG, corner_radius=6, border_width=1, border_color=TAG_BORDER)
         tag_cat.pack(side="left", padx=(0, 6))
+        tag_txt = loc_t.get("destaque_tag") or traduzir_categoria(local.get("categoria", ["Passeio"])[0])
         ctk.CTkLabel(
             tag_cat,
-            text=meta.get("destaque_tag", local.get("categoria", ["Turismo"])[0]),
+            text=tag_txt,
             font=fonte(10, "bold"),
-            text_color=TAG_TEXT,
+            text_color=TEXT_EXPLORAR,
             padx=8,
             pady=2,
         ).pack()
@@ -872,39 +1076,38 @@ class BelemNaMaoApp(ctk.CTk):
             text_color=AMBER,
         ).pack(side="right")
 
-        ctk.CTkLabel(corpo, text=local["nome"], font=fonte(16, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
+        ctk.CTkLabel(corpo, text=local["nome"], font=fonte(16, "bold"), text_color=TEXT_EXPLORAR).pack(anchor="w")
 
         dist = meta.get("distancia", "1,4 km")
-        dur = local.get("duracao", "2h")
+        dur = loc_t.get("duracao", local.get("duracao", "2h"))
         bairro = local.get("bairro", "Belém")
-        preco = meta.get("preco_tag", rotulo_preco(local.get("preco")))
+        preco = loc_t.get("preco_tag", rotulo_preco(local.get("preco")))
         ctk.CTkLabel(
             corpo,
             text=f"📍 {bairro} • {dist} • {dur}   |   {preco}",
-            font=fonte(12),
-            text_color=TEXT_BRAND,
+            font=fonte(12, "bold"),
+            text_color=TEXT_EXPLORAR,
         ).pack(anchor="w", pady=(2, 6))
 
-        desc = local.get("descricao", "")
+        desc = loc_t.get("descricao", "")
         if len(desc) > 95:
             desc = desc[:92] + "..."
         ctk.CTkLabel(
             corpo,
             text=desc,
             font=fonte(12),
-            text_color=TEXT_MUTED,
+            text_color=TEXT_EXPLORAR,
             justify="left",
             wraplength=310,
         ).pack(anchor="w", pady=(0, 10))
 
-        # Ações fixas na base do card
         botoes = ctk.CTkFrame(corpo, fg_color="transparent")
         botoes.pack(side="bottom", fill="x")
 
         presente = self._no_roteiro(local)
         btn_it = ctk.CTkButton(
             botoes,
-            text="✓ No Roteiro" if presente else "+ Roteiro",
+            text=t("btn_no_roteiro") if presente else t("btn_add_roteiro"),
             height=36,
             corner_radius=8,
             fg_color=TERTIARY_CONTAINER if presente else PRIMARY_BTN,
@@ -912,19 +1115,19 @@ class BelemNaMaoApp(ctk.CTk):
             text_color="#FFFFFF",
             font=fonte(12, "bold"),
         )
-        btn_it.configure(command=lambda l=local, b=btn_it: self.alternar_roteiro_btn(l, b))
+        btn_it.configure(command=lambda l=local, b=btn_it: self.alternar_roteiro_btn(l, b, estilo="card"))
         btn_it.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
         ctk.CTkButton(
             botoes,
-            text="Detalhes",
+            text=t("btn_detalhes"),
             height=36,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
             border_width=1,
             border_color=BTN_SECONDARY_BORDER,
             hover_color=BTN_SECONDARY_HOVER,
-            text_color=BTN_SECONDARY_TEXT,
+            text_color=TEXT_EXPLORAR,
             font=fonte(12, "bold"),
             command=lambda l=local: self.mostrar_detalhes(l, voltar=self.mostrar_explorar),
         ).pack(side="right")
@@ -935,17 +1138,17 @@ class BelemNaMaoApp(ctk.CTk):
     def _criar_estado_vazio(self, master):
         vazio = ctk.CTkFrame(master, fg_color="transparent")
         vazio.pack(pady=60)
-        ctk.CTkLabel(vazio, text="🔎", font=fonte(42)).pack(pady=(0, 6))
-        ctk.CTkLabel(vazio, text="Nenhum local encontrado", font=fonte(18, "bold"), text_color=TEXT_TITLE).pack(pady=(0, 4))
+        ctk.CTkLabel(vazio, text="🔎", font=fonte(42), text_color=TEXT_EXPLORAR).pack(pady=(0, 6))
+        ctk.CTkLabel(vazio, text=t("vazio_titulo"), font=fonte(18, "bold"), text_color=TEXT_EXPLORAR).pack(pady=(0, 4))
         ctk.CTkLabel(
             vazio,
-            text="Tente outro termo na busca ou remova algum filtro de categoria/bairro.",
+            text=t("vazio_subtitulo"),
             font=fonte(13),
-            text_color=TEXT_MUTED,
+            text_color=TEXT_EXPLORAR,
         ).pack()
         ctk.CTkButton(
             vazio,
-            text="Limpar Filtros",
+            text=t("vazio_btn_limpar"),
             height=36,
             corner_radius=8,
             fg_color=PRIMARY_BTN,
@@ -959,18 +1162,23 @@ class BelemNaMaoApp(ctk.CTk):
         self.f_texto = ""
         self.f_categoria = "Todas"
         self.f_preco = "Qualquer"
-        self.f_bairro = "Todos os Bairros"
-        self.seg_preco.set("Qualquer")
-        self.menu_bairro.set("Todos os Bairros")
+        self.f_bairro = "Todos"
+        self.seg_preco.set(traduzir_preco_filtro("Qualquer"))
+        self.menu_bairro.set(t("filtro_todos_bairros"))
         self._selecionar_categoria_chip("Todas")
 
     # ==================================================================
-    # 4. Tela Detalhes da Atração (Bento Showcase, Informações Práticas, etc.)
+    # 4. Tela Detalhes da Atração
     # ==================================================================
     def mostrar_detalhes(self, local: Dict[str, Any], voltar=None):
         voltar = voltar or self.mostrar_explorar
+        self._local_detalhe_atual = local
+        self._voltar_detalhe_atual = voltar
+
         self._limpar_conteudo()
+        self._marcar_aba_ativa("detalhes")
         meta = METADADOS_LOCAIS.get(local.get("id", ""), {})
+        loc_t = traduzir_local(local, meta)
 
         rolagem = ctk.CTkScrollableFrame(self.conteudo, fg_color="transparent", corner_radius=0)
         rolagem.pack(fill="both", expand=True)
@@ -982,13 +1190,12 @@ class BelemNaMaoApp(ctk.CTk):
         top_bar = ctk.CTkFrame(inner, fg_color="transparent")
         top_bar.pack(fill="x", pady=(0, 14))
 
-        # Breadcrumbs
         bc_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
         bc_frame.pack(side="left")
 
         ctk.CTkButton(
             bc_frame,
-            text="‹ Voltar",
+            text=t("btn_voltar"),
             width=76,
             height=32,
             corner_radius=8,
@@ -1003,19 +1210,18 @@ class BelemNaMaoApp(ctk.CTk):
 
         ctk.CTkLabel(
             bc_frame,
-            text=f"Início  /  Explorar  /  {local.get('bairro', 'Belém')}  /  ",
+            text=f"{t('breadcrumb_inicio')}  /  {t('breadcrumb_explorar')}  /  {local.get('bairro', 'Belém')}  /  ",
             font=fonte(12),
             text_color=TEXT_MUTED,
         ).pack(side="left")
         ctk.CTkLabel(bc_frame, text=local["nome"], font=fonte(12, "bold"), text_color=TEXT_TITLE).pack(side="left")
 
-        # Ações do Topo: Compartilhar & Salvar
         acoes_topo = ctk.CTkFrame(top_bar, fg_color="transparent")
         acoes_topo.pack(side="right")
 
         ctk.CTkButton(
             acoes_topo,
-            text="Compartilhar",
+            text=t("btn_compartilhar"),
             height=32,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -1024,13 +1230,13 @@ class BelemNaMaoApp(ctk.CTk):
             border_width=1,
             border_color=BTN_SECONDARY_BORDER,
             font=fonte(12),
-            command=lambda: self._toast("Link copiado para a área de transferência!"),
+            command=lambda: self._toast(t("toast_compartilhar")),
         ).pack(side="left", padx=(0, 8))
 
         presente = self._no_roteiro(local)
         btn_fav = ctk.CTkButton(
             acoes_topo,
-            text="✓ Salvo no Roteiro" if presente else "Salvar nos Favoritos",
+            text=t("btn_salvo_roteiro") if presente else t("btn_salvar_fav"),
             height=32,
             corner_radius=8,
             fg_color=TERTIARY_FIXED if presente else BTN_SECONDARY_BG,
@@ -1040,25 +1246,25 @@ class BelemNaMaoApp(ctk.CTk):
             border_color=BTN_SECONDARY_BORDER,
             font=fonte(12, "bold"),
         )
-        btn_fav.configure(command=lambda l=local, b=btn_fav: self.alternar_roteiro_btn(l, b))
+        btn_fav.configure(command=lambda l=local, b=btn_fav: self.alternar_roteiro_btn(l, b, estilo="fav"))
         btn_fav.pack(side="left")
 
-        # 2. Bento Visual Gallery (Showcase com foto em destaque + secundárias)
+        # 2. Bento Visual Gallery
         galeria = ctk.CTkFrame(inner, fg_color="transparent")
         galeria.pack(fill="x", pady=(0, 18))
         galeria.grid_columnconfigure(0, weight=7, uniform="gal")
         galeria.grid_columnconfigure(1, weight=4, uniform="gal")
 
-        # Foto Principal Grande (8 Colunas)
         img_principal = obter_imagem_processada(local.get("id", ""), 680, 360, raio=12)
         lbl_p = ctk.CTkLabel(galeria, text="", image=img_principal)
         lbl_p.grid(row=0, column=0, padx=(0, 8), sticky="nsew")
 
-        # Grid Secundário Lateral (4 Colunas)
         sec_box = ctk.CTkFrame(galeria, fg_color="transparent")
         sec_box.grid(row=0, column=1, sticky="nsew")
 
-        id_sec_1 = "feliz-lusitania-2" if local.get("id") == "feliz-lusitania" else "estacao-das-docas"
+        id_sec_1 = "feliz-lusitania-2" if local.get("id") == "feliz-lusitania" else (
+            "bistro-guajara-noturno" if local.get("id") == "estacao-das-docas" else "estacao-das-docas"
+        )
         img_sec_1 = obter_imagem_processada(id_sec_1, 380, 172, raio=12)
         lbl_s1 = ctk.CTkLabel(sec_box, text="", image=img_sec_1)
         lbl_s1.pack(fill="x", pady=(0, 8))
@@ -1075,24 +1281,22 @@ class BelemNaMaoApp(ctk.CTk):
         tags_line = ctk.CTkFrame(cab_detalhes, fg_color="transparent")
         tags_line.pack(anchor="w", pady=(0, 6))
 
-        # Tag Categoria
         tag1 = ctk.CTkFrame(tags_line, fg_color=TAG_BG, corner_radius=6, border_width=1, border_color=TAG_BORDER)
         tag1.pack(side="left", padx=(0, 6))
         ctk.CTkLabel(
             tag1,
-            text=meta.get("destaque_tag", "Marco de Belém"),
+            text=loc_t.get("destaque_tag") or "Belém",
             font=fonte(11, "bold"),
             text_color=TAG_TEXT,
             padx=10,
             pady=3,
         ).pack()
 
-        # Tag Avaliação
         tag2 = ctk.CTkFrame(tags_line, fg_color=PANEL_SUBTLE, corner_radius=6, border_width=1, border_color=LINE)
         tag2.pack(side="left", padx=(0, 6))
         ctk.CTkLabel(
             tag2,
-            text=f"★ {meta.get('rating', 4.9)} ({meta.get('avaliacoes', '1.8k')} avaliações)",
+            text=f"★ {meta.get('rating', 4.9)} ({meta.get('avaliacoes', '1.8k')} {t('avaliacoes_suffix')})",
             font=fonte(11, "bold"),
             text_color=AMBER,
             padx=10,
@@ -1102,12 +1306,12 @@ class BelemNaMaoApp(ctk.CTk):
         ctk.CTkLabel(cab_detalhes, text=local["nome"], font=fonte(28, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
         ctk.CTkLabel(
             cab_detalhes,
-            text=f"📍 {local.get('endereco', 'Belém, Pará')}",
+            text=f"📍 {loc_t.get('endereco', local.get('endereco', 'Belém, Pará'))}",
             font=fonte(13),
             text_color=TEXT_MUTED,
         ).pack(anchor="w", pady=(2, 6))
 
-        # 4. Grid de Conteúdo Principal (Esquerda 65% / Direita 35%)
+        # 4. Grid de Conteúdo Principal
         grid_conteudo = ctk.CTkFrame(inner, fg_color="transparent")
         grid_conteudo.pack(fill="x")
         grid_conteudo.grid_columnconfigure(0, weight=65, uniform="detalhes_cols")
@@ -1117,19 +1321,18 @@ class BelemNaMaoApp(ctk.CTk):
         col_esq = ctk.CTkFrame(grid_conteudo, fg_color="transparent")
         col_esq.grid(row=0, column=0, padx=(0, 16), sticky="nsew")
 
-        # Bloco "Sobre o Lugar"
         bloco_sobre = ctk.CTkFrame(col_esq, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
         bloco_sobre.pack(fill="x", pady=(0, 16))
 
         bs_inner = ctk.CTkFrame(bloco_sobre, fg_color="transparent")
         bs_inner.pack(fill="both", expand=True, padx=22, pady=18)
 
-        ctk.CTkLabel(bs_inner, text="Sobre o Marco Histórico", font=fonte(18, "bold"), text_color=TEXT_TITLE).pack(
+        ctk.CTkLabel(bs_inner, text=t("detalhes_sobre_titulo"), font=fonte(18, "bold"), text_color=TEXT_TITLE).pack(
             anchor="w", pady=(0, 8)
         )
         ctk.CTkLabel(
             bs_inner,
-            text=local["descricao"],
+            text=loc_t.get("descricao", local["descricao"]),
             font=fonte(13),
             text_color=TEXT,
             justify="left",
@@ -1138,15 +1341,14 @@ class BelemNaMaoApp(ctk.CTk):
 
         ctk.CTkLabel(
             bs_inner,
-            text=f"Importância e Memória: {local.get('por_que_visitar', 'Uma experiência essencial para quem deseja compreender as raízes amazônicas.')}",
+            text=f"{t('detalhes_importancia')} {loc_t.get('por_que_visitar', local.get('por_que_visitar', ''))}",
             font=fonte(13),
             text_color=TEXT_MUTED,
             justify="left",
             wraplength=640,
         ).pack(anchor="w")
 
-        # Bloco "Destaques & Por Que Visitar" (4 Cards Bento)
-        ctk.CTkLabel(col_esq, text="Destaques & Por Que Visitar", font=fonte(18, "bold"), text_color=TEXT_TITLE).pack(
+        ctk.CTkLabel(col_esq, text=t("detalhes_destaques_titulo"), font=fonte(18, "bold"), text_color=TEXT_TITLE).pack(
             anchor="w", pady=(6, 10)
         )
 
@@ -1154,14 +1356,8 @@ class BelemNaMaoApp(ctk.CTk):
         grid_destaques_detalhe.pack(fill="x", pady=(0, 16))
         grid_destaques_detalhe.grid_columnconfigure((0, 1), weight=1, uniform="pq_visitar")
 
-        itens_pq = [
-            ("🌅", "Mirante 360° da Baía", "Panorama deslumbrante das embarcações ribeirinhas e o pôr do sol amazônico."),
-            ("🏺", "Acervo e Memória Viva", "Cerâmicas marajoaras e vestígios de mais de 2.000 anos preservados."),
-            ("🛡️", "Artilharia e Muralhas", "Baterias de canhões históricos voltados para a entrada do estuário."),
-            ("🍲", "Cultura & Sabores", "Restaurantes e docas contíguas com o melhor da gastronomia local."),
-        ]
-
-        for i, (ic, tit, desc) in enumerate(itens_pq):
+        itens_pq = loc_t.get("destaques_cards", [])
+        for i, (ic, tit, desc) in enumerate(itens_pq[:4]):
             c_pq = ctk.CTkFrame(grid_destaques_detalhe, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
             c_pq.grid(row=i // 2, column=i % 2, padx=4, pady=4, sticky="nsew")
 
@@ -1177,7 +1373,7 @@ class BelemNaMaoApp(ctk.CTk):
                 anchor="w", pady=(4, 0)
             )
 
-        # === COLUNA DIREITA (Sticky Planning & Booking Card) ===
+        # === COLUNA DIREITA ===
         col_dir = ctk.CTkFrame(grid_conteudo, fg_color="transparent")
         col_dir.grid(row=0, column=1, sticky="nsew")
 
@@ -1187,32 +1383,31 @@ class BelemNaMaoApp(ctk.CTk):
         cp_inner = ctk.CTkFrame(card_planejamento, fg_color="transparent")
         cp_inner.pack(fill="both", expand=True, padx=22, pady=20)
 
-        # Preço & Acesso
         cp_topo = ctk.CTkFrame(cp_inner, fg_color="transparent")
         cp_topo.pack(fill="x", pady=(0, 12))
 
-        ctk.CTkLabel(cp_topo, text="INGRESSO CIRCUITO", font=fonte(10, "bold"), text_color=TEXT_MUTED).pack(anchor="w")
-        preco_val = meta.get("preco_tag", rotulo_preco(local.get("preco")))
-        ctk.CTkLabel(cp_topo, text=preco_val, font=fonte(22, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
+        ctk.CTkLabel(cp_topo, text=t("detalhes_ingresso"), font=fonte(10, "bold"), text_color=TEXT_MUTED).pack(anchor="w")
+        preco_val = loc_t.get("preco_tag", rotulo_preco(local.get("preco")))
+        ctk.CTkLabel(cp_topo, text=preco_val, font=fonte(20, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
 
-        # Status Aberto Agora
         status_box = ctk.CTkFrame(cp_inner, fg_color=TERTIARY_FIXED, corner_radius=8)
         status_box.pack(fill="x", pady=(0, 12))
         ctk.CTkLabel(
             status_box,
-            text=f"● Aberto Agora  •  {meta.get('horario', '09h às 18h')}",
+            text=f"{t('detalhes_aberto_agora')}  •  {loc_t.get('horario', '09h às 18h')}",
             font=fonte(11, "bold"),
             text_color=TERTIARY_CONTAINER,
             padx=12,
             pady=6,
-        ).pack()
+            wraplength=290,
+            justify="left",
+        ).pack(anchor="w")
 
-        # Previsão Climática para a Visita
         clima_box = ctk.CTkFrame(cp_inner, fg_color=PANEL_SUBTLE, corner_radius=8, border_width=1, border_color=LINE)
         clima_box.pack(fill="x", pady=(0, 16))
         ctk.CTkLabel(
             clima_box,
-            text="🌧️ Previsão: Chuva rápida às 16h; fim de tarde com brisa fresca (29°C)",
+            text=t("detalhes_clima"),
             font=fonte(11),
             text_color=TEXT_TITLE,
             padx=12,
@@ -1221,11 +1416,10 @@ class BelemNaMaoApp(ctk.CTk):
             justify="left",
         ).pack(anchor="w")
 
-        # Botão de Ação Primário
         presente = self._no_roteiro(local)
         self.btn_acao_detalhe = ctk.CTkButton(
             cp_inner,
-            text="✓ Salvo no Meu Roteiro" if presente else "+ Adicionar ao Meu Roteiro",
+            text=t("detalhes_salvo_roteiro") if presente else t("detalhes_add_roteiro"),
             height=44,
             corner_radius=8,
             fg_color=TERTIARY_CONTAINER if presente else PRIMARY_BTN,
@@ -1234,14 +1428,13 @@ class BelemNaMaoApp(ctk.CTk):
             font=fonte(14, "bold"),
         )
         self.btn_acao_detalhe.configure(
-            command=lambda l=local: self.alternar_roteiro_btn(l, self.btn_acao_detalhe)
+            command=lambda l=local: self.alternar_roteiro_btn(l, self.btn_acao_detalhe, estilo="detalhe")
         )
         self.btn_acao_detalhe.pack(fill="x", pady=(0, 10))
 
-        # Abrir no Google Maps
         ctk.CTkButton(
             cp_inner,
-            text="🗺️ Abrir Rota no Google Maps",
+            text=t("detalhes_maps"),
             height=38,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -1253,14 +1446,13 @@ class BelemNaMaoApp(ctk.CTk):
             command=lambda: webbrowser.open(f"https://maps.google.com/?q={local['nome']}+Belem"),
         ).pack(fill="x", pady=(0, 14))
 
-        # Informações Práticas Rápidas
         ctk.CTkFrame(cp_inner, height=1, fg_color=LINE).pack(fill="x", pady=(0, 12))
 
         praticas = [
-            ("⏱️", f"Tempo sugerido: {local.get('duracao', '1h30 a 2h')}"),
-            ("❄️", "Ambientes com ar condicionado"),
-            ("📷", "Permitido fotos (sem flash no acervo)"),
-            ("♿", "Rampas e acessibilidade total"),
+            ("⏱️", t("detalhes_tempo_sugerido", duracao=loc_t.get("duracao", local.get("duracao", "1h30 a 2h")))),
+            ("❄️", t("detalhes_clima_ar")),
+            ("📷", t("detalhes_fotos")),
+            ("♿", t("detalhes_acessibilidade")),
         ]
         for ic, txt in praticas:
             r = ctk.CTkFrame(cp_inner, fg_color="transparent")
@@ -1269,11 +1461,11 @@ class BelemNaMaoApp(ctk.CTk):
             ctk.CTkLabel(r, text=txt, font=fonte(11), text_color=TEXT_MUTED).pack(side="left")
 
     # ==================================================================
-    # 5. Tela Meu Roteiro (Timeline Otimizada por IA, Métricas e Mapa)
+    # 5. Tela Meu Roteiro
     # ==================================================================
     def mostrar_roteiro(self):
         self._limpar_conteudo()
-        self._marcar_aba_ativa("Meu Roteiro")
+        self._marcar_aba_ativa("roteiro")
 
         rolagem = ctk.CTkScrollableFrame(self.conteudo, fg_color="transparent", corner_radius=0)
         rolagem.pack(fill="both", expand=True)
@@ -1281,7 +1473,6 @@ class BelemNaMaoApp(ctk.CTk):
         inner = ctk.CTkFrame(rolagem, fg_color="transparent")
         inner.pack(fill="x", padx=32, pady=(20, 40))
 
-        # 1. Top Bar de Métricas e Ações
         topo_roteiro = ctk.CTkFrame(inner, fg_color="transparent")
         topo_roteiro.pack(fill="x", pady=(0, 16))
 
@@ -1290,23 +1481,22 @@ class BelemNaMaoApp(ctk.CTk):
 
         tag_r = ctk.CTkFrame(esq_r, fg_color=TAG_BG, corner_radius=6, border_width=1, border_color=TAG_BORDER)
         tag_r.pack(anchor="w", pady=(0, 4))
-        ctk.CTkLabel(tag_r, text="ROTEIRO INTELIGENTE • PARÁ", font=fonte(10, "bold"), text_color=TAG_TEXT, padx=8, pady=2).pack()
+        ctk.CTkLabel(tag_r, text=t("roteiro_tag"), font=fonte(10, "bold"), text_color=TAG_TEXT, padx=8, pady=2).pack()
 
-        ctk.CTkLabel(esq_r, text="O Melhor de Belém Histórica & Baía", font=fonte(28, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
+        ctk.CTkLabel(esq_r, text=t("roteiro_titulo"), font=fonte(28, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
         ctk.CTkLabel(
             esq_r,
-            text="Percurso com o aroma das ervas do Ver-o-Peso, a imponência barroca de 1616 e o entardecer nas Docas.",
+            text=t("roteiro_subtitulo"),
             font=fonte(13),
             text_color=TEXT_MUTED,
         ).pack(anchor="w")
 
-        # Botões de Ação do Roteiro
         acoes_r = ctk.CTkFrame(topo_roteiro, fg_color="transparent")
         acoes_r.pack(side="right", pady=8)
 
         ctk.CTkButton(
             acoes_r,
-            text="✨ Otimizar Ordem (IA)",
+            text=t("btn_otimizar_ia"),
             height=38,
             corner_radius=8,
             fg_color=PRIMARY_BTN,
@@ -1318,7 +1508,7 @@ class BelemNaMaoApp(ctk.CTk):
 
         ctk.CTkButton(
             acoes_r,
-            text="💾 Salvar",
+            text=t("btn_salvar"),
             height=38,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -1332,7 +1522,7 @@ class BelemNaMaoApp(ctk.CTk):
 
         ctk.CTkButton(
             acoes_r,
-            text="Limpar",
+            text=t("btn_limpar"),
             height=38,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -1344,7 +1534,6 @@ class BelemNaMaoApp(ctk.CTk):
             command=self._confirmar_limpar_roteiro,
         ).pack(side="left")
 
-        # 2. Métricas Rápidas do Roteiro (KPIs)
         strip_metricas = ctk.CTkFrame(inner, fg_color="transparent")
         strip_metricas.pack(fill="x", pady=(0, 20))
         strip_metricas.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="met_r")
@@ -1352,17 +1541,17 @@ class BelemNaMaoApp(ctk.CTk):
         total_paradas = len(self.roteiro)
         if total_paradas == 0:
             metricas = [
-                ("⏱️", "Duração Total", "0h"),
-                ("📍", "Paradas Salvas", "0 locais"),
-                ("💰", "Estimativa de Gasto", "R$ 0"),
-                ("🚶", "Distância a Pé", "0 km"),
+                ("⏱️", t("kpi_duracao"), "0h"),
+                ("📍", t("kpi_paradas"), t("kpi_paradas_zero")),
+                ("💰", t("kpi_gasto"), "R$ 0"),
+                ("🚶", t("kpi_distancia"), "0 km"),
             ]
         else:
             metricas = [
-                ("⏱️", "Duração Total", f"~{total_paradas * 2}h com pausas"),
-                ("📍", "Paradas Salvas", f"{total_paradas} locais programados"),
-                ("💰", "Estimativa de Gasto", f"R$ {total_paradas * 15} / pessoa"),
-                ("🚶", "Distância a Pé", f"{total_paradas * 0.8:.1f} km a pé"),
+                ("⏱️", t("kpi_duracao"), t("kpi_duracao_val", h=total_paradas * 2)),
+                ("📍", t("kpi_paradas"), t("kpi_paradas_val", n=total_paradas)),
+                ("💰", t("kpi_gasto"), t("kpi_gasto_val", v=total_paradas * 15)),
+                ("🚶", t("kpi_distancia"), t("kpi_distancia_val", km=f"{total_paradas * 0.8:.1f}")),
             ]
 
         for i, (ic, tit, val) in enumerate(metricas):
@@ -1372,72 +1561,64 @@ class BelemNaMaoApp(ctk.CTk):
             cm_in = ctk.CTkFrame(c_m, fg_color="transparent")
             cm_in.pack(fill="both", expand=True, padx=14, pady=12)
 
-            t = ctk.CTkFrame(cm_in, fg_color="transparent")
-            t.pack(fill="x")
-            ctk.CTkLabel(t, text=ic, font=fonte(16)).pack(side="left", padx=(0, 6))
-            ctk.CTkLabel(t, text=tit, font=fonte(11, "bold"), text_color=TEXT_MUTED).pack(side="left")
+            t_row = ctk.CTkFrame(cm_in, fg_color="transparent")
+            t_row.pack(fill="x")
+            ctk.CTkLabel(t_row, text=ic, font=fonte(16)).pack(side="left", padx=(0, 6))
+            ctk.CTkLabel(t_row, text=tit, font=fonte(11, "bold"), text_color=TEXT_MUTED).pack(side="left")
 
             ctk.CTkLabel(cm_in, text=val, font=fonte(15, "bold"), text_color=TEXT_KPI).pack(anchor="w", pady=(4, 0))
 
-        # 3. Estado Vazio (100% de largura alinhado aos KPIs) ou Timeline
         if not self.roteiro:
             self._criar_roteiro_vazio(inner)
             return
 
-        # Layout de 2 Colunas (Timeline à Esquerda / Deck de Apoio à Direita)
         grid_rot = ctk.CTkFrame(inner, fg_color="transparent")
         grid_rot.pack(fill="both", expand=True)
         grid_rot.grid_columnconfigure(0, weight=65, uniform="rot_cols")
         grid_rot.grid_columnconfigure(1, weight=35, uniform="rot_cols")
 
-        # === ESQUERDA: Timeline de Paradas ===
         col_timeline = ctk.CTkFrame(grid_rot, fg_color="transparent")
         col_timeline.grid(row=0, column=0, padx=(0, 16), sticky="nsew")
 
-        # Turno da Manhã Header
-        self._criar_divisor_periodo(col_timeline, "🌅 Turno da Manhã (08h00 às 12h30)", "Coração Histórico e Gastronômico")
+        self._criar_divisor_periodo(col_timeline, t("turno_manha_titulo"), t("turno_manha_sub"))
 
         paradas_manha = self.roteiro[:2]
         for idx, local in enumerate(paradas_manha, start=1):
             self._criar_card_timeline_parada(col_timeline, local, idx, horario="08:00 – 10:30" if idx == 1 else "10:45 – 12:30")
             if idx == 1:
-                self._criar_conector_deslocamento(col_timeline, "🚶 Caminhada leve de 6 min (450m) via Boulevard Castilhos França")
+                self._criar_conector_deslocamento(col_timeline, t("conector_manha"))
 
-        # Pausa para Almoço Sugerida
         self._criar_card_almoco(col_timeline)
 
-        # Turno da Tarde Header
-        self._criar_divisor_periodo(col_timeline, "☀️ Turno da Tarde (14h30 às 19h30)", "Arquitetura da Borracha e Pôr do Sol")
-
-        # Conector Carro
-        self._criar_conector_deslocamento(col_timeline, "🚗 Deslocamento de 8 min (2.1 km) para evitar o calor do meio-dia")
+        self._criar_divisor_periodo(col_timeline, t("turno_tarde_titulo"), t("turno_tarde_sub"))
+        self._criar_conector_deslocamento(col_timeline, t("conector_carro"))
 
         paradas_tarde = self.roteiro[2:]
         for idx, local in enumerate(paradas_tarde, start=3):
-            self._criar_card_timeline_parada(col_timeline, local, idx, horario="14:30 – 16:15" if idx == 3 else "16:30 – 19:30")
+            self._criar_card_timeline_parada(col_timeline, local, idx, horario="14:30 – 17:30" if idx == 3 else "18:30 – 22:30")
             if idx == 3:
-                self._criar_conector_deslocamento(col_timeline, "🚶 Caminhada arborizada de 12 min após a chuva refrescar o ar")
+                self._criar_conector_deslocamento(col_timeline, t("conector_tarde"))
 
-        # === DIREITA: Deck de Planejamento, Clima e Checklist ===
         col_planejamento = ctk.CTkFrame(grid_rot, fg_color="transparent")
         col_planejamento.grid(row=0, column=1, sticky="nsew")
 
-        # Mini Mapa Vetorial da Rota
         mapa_box = ctk.CTkFrame(col_planejamento, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
         mapa_box.pack(fill="x", pady=(0, 16))
 
         mb_in = ctk.CTkFrame(mapa_box, fg_color="transparent")
         mb_in.pack(fill="both", expand=True, padx=16, pady=16)
 
-        ctk.CTkLabel(mb_in, text="Traçado da Rota (Dia 1)", font=fonte(15, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
-        ctk.CTkLabel(mb_in, text="4 Paradas conectadas na Baía do Guajará", font=fonte(12), text_color=TEXT_MUTED).pack(anchor="w", pady=(0, 10))
+        ctk.CTkLabel(mb_in, text=t("rota_titulo"), font=fonte(15, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
+        ctk.CTkLabel(mb_in, text=t("rota_subtitulo", n=total_paradas), font=fonte(12), text_color=TEXT_MUTED).pack(
+            anchor="w", pady=(0, 10)
+        )
 
         img_map_route = obter_imagem_processada("feliz-lusitania", 340, 170, raio=12)
         ctk.CTkLabel(mb_in, text="", image=img_map_route).pack(fill="x", pady=(0, 10))
 
         ctk.CTkButton(
             mb_in,
-            text="Abrir Trajeto no Google Maps ↗",
+            text=t("btn_maps_rota"),
             height=36,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -1449,21 +1630,20 @@ class BelemNaMaoApp(ctk.CTk):
             command=lambda: webbrowser.open("https://maps.google.com/?q=Mercado+Ver-o-Peso+Belem"),
         ).pack(fill="x")
 
-        # Checklist "O que levar no dia"
         card_check = ctk.CTkFrame(col_planejamento, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
         card_check.pack(fill="x", pady=(0, 16))
 
         cc_in = ctk.CTkFrame(card_check, fg_color="transparent")
         cc_in.pack(fill="both", expand=True, padx=16, pady=16)
 
-        ctk.CTkLabel(cc_in, text="O que levar no dia", font=fonte(15, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
-        ctk.CTkLabel(cc_in, text="Itens essenciais para o clima equatorial", font=fonte(12), text_color=TEXT_MUTED).pack(anchor="w", pady=(0, 10))
+        ctk.CTkLabel(cc_in, text=t("checklist_titulo"), font=fonte(15, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
+        ctk.CTkLabel(cc_in, text=t("checklist_sub"), font=fonte(12), text_color=TEXT_MUTED).pack(anchor="w", pady=(0, 10))
 
         itens_mochila = [
-            ("Guarda-chuva compacto ou capa", True),
-            ("Dinheiro em espécie (trocado para feirantes)", True),
-            ("Calçado leve e antiderrapante (paralelepípedo úmido)", True),
-            ("Garrafa d'água reutilizável (hidratação)", False),
+            (t("check_1"), True),
+            (t("check_2"), True),
+            (t("check_3"), True),
+            (t("check_4"), False),
         ]
         for txt, marcado in itens_mochila:
             chk = ctk.CTkCheckBox(
@@ -1479,19 +1659,19 @@ class BelemNaMaoApp(ctk.CTk):
                 chk.select()
             chk.pack(anchor="w", pady=4)
 
-        # Atalhos de Adição Rápida
         card_quick = ctk.CTkFrame(col_planejamento, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
         card_quick.pack(fill="x")
 
         cq_in = ctk.CTkFrame(card_quick, fg_color="transparent")
         cq_in.pack(fill="both", expand=True, padx=16, pady=16)
 
-        ctk.CTkLabel(cq_in, text="Adicionar Paradas Sugeridas", font=fonte(14, "bold"), text_color=TEXT_TITLE).pack(anchor="w", pady=(0, 8))
+        ctk.CTkLabel(cq_in, text=t("sugestoes_titulo"), font=fonte(14, "bold"), text_color=TEXT_TITLE).pack(anchor="w", pady=(0, 8))
 
         sugestoes = [
-            ("mangal", "+ Mangal das Garças (Parque)"),
+            ("bistro-guajara-noturno", "+ Bistrô do Guajará (Umarizal)"),
+            ("mangal", "+ Mangal das Garças"),
             ("basilica-nazare", "+ Basílica de Nazaré"),
-            ("ilha-combu", "+ Ilha do Combu (Chocolates)"),
+            ("ilha-combu", "+ Ilha do Combu"),
         ]
         for sid, stxt in sugestoes:
             loc_sug = next((l for l in self.locais if l.get("id") == sid), None)
@@ -1530,50 +1710,55 @@ class BelemNaMaoApp(ctk.CTk):
 
         tag = ctk.CTkFrame(inner, fg_color=TAG_BG, corner_radius=6, border_width=1, border_color=TAG_BORDER)
         tag.pack(anchor="w", pady=(0, 4))
-        ctk.CTkLabel(tag, text="PAUSA DE ALMOÇO SUGERIDA • 12:30 - 14:00", font=fonte(10, "bold"), text_color=TAG_TEXT, padx=8, pady=2).pack()
+        ctk.CTkLabel(tag, text=t("almoco_tag"), font=fonte(10, "bold"), text_color=TAG_TEXT, padx=8, pady=2).pack()
 
-        ctk.CTkLabel(inner, text="Casa das Onze Janelas ou Box do Peixe Frito com Açaí", font=fonte(15, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
-        ctk.CTkLabel(
-            inner,
-            text="Opte por almoçar com vista para a baía (pratos contemporâneos de filhote e tucupi) ou no autêntico box da feira.",
-            font=fonte(12),
-            text_color=TEXT_MUTED,
-        ).pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(inner, text=t("almoco_titulo"), font=fonte(15, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
+        ctk.CTkLabel(inner, text=t("almoco_desc"), font=fonte(12), text_color=TEXT_MUTED).pack(anchor="w", pady=(2, 0))
 
     def _criar_card_timeline_parada(self, master, local: Dict[str, Any], indice: int, horario: str):
         meta = METADADOS_LOCAIS.get(local.get("id", ""), {})
+        loc_t = traduzir_local(local, meta)
+
         card = ctk.CTkFrame(master, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
         card.pack(fill="x", pady=6)
 
         c_in = ctk.CTkFrame(card, fg_color="transparent")
         c_in.pack(fill="both", expand=True, padx=16, pady=14)
 
-        # Indicador numérico
         num = ctk.CTkFrame(c_in, width=32, height=32, corner_radius=8, fg_color=PRIMARY_BTN)
         num.pack(side="left", padx=(0, 12))
         num.pack_propagate(False)
         ctk.CTkLabel(num, text=str(indice), font=fonte(13, "bold"), text_color="#FFFFFF").pack(expand=True)
 
-        # Foto Miniatura
         img_thumb = obter_imagem_processada(local.get("id", ""), 120, 80, raio=8)
         lbl_thumb = ctk.CTkLabel(c_in, text="", image=img_thumb)
         lbl_thumb.pack(side="left", padx=(0, 14))
 
-        # Informações da Parada
         info = ctk.CTkFrame(c_in, fg_color="transparent")
         info.pack(side="left", fill="both", expand=True)
 
         ctk.CTkLabel(info, text=f"{local['nome']}  •  {horario}", font=fonte(15, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
-        ctk.CTkLabel(info, text=f"📍 {local['bairro']}  •  {local.get('duracao', '2h')}", font=fonte(12), text_color=TEXT_MUTED).pack(anchor="w")
-        ctk.CTkLabel(info, text=local["descricao"], font=fonte(12), text_color=TEXT, wraplength=380, justify="left").pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(
+            info,
+            text=f"📍 {local['bairro']}  •  {loc_t.get('duracao', local.get('duracao', '2h'))}",
+            font=fonte(12),
+            text_color=TEXT_MUTED,
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            info,
+            text=loc_t.get("descricao", local["descricao"]),
+            font=fonte(12),
+            text_color=TEXT,
+            wraplength=380,
+            justify="left",
+        ).pack(anchor="w", pady=(2, 0))
 
-        # Ações na Linha da Parada
         acoes = ctk.CTkFrame(c_in, fg_color="transparent")
         acoes.pack(side="right")
 
         ctk.CTkButton(
             acoes,
-            text="Ver Guia",
+            text=t("btn_ver_guia"),
             height=32,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -1603,29 +1788,39 @@ class BelemNaMaoApp(ctk.CTk):
     def _adicionar_sugestao_rapida(self, local: Dict[str, Any]):
         self.roteiro = adicionar(self.roteiro, local, usuario_id=self.usuario_id)
         self.mostrar_roteiro()
-        self._toast(f"✓ {local['nome']} adicionado ao roteiro!")
+        self._toast(t("toast_add_roteiro", nome=local["nome"]))
 
     def _remover_item_roteiro(self, local_id: str):
         self.roteiro = remover(self.roteiro, local_id, usuario_id=self.usuario_id)
         self.mostrar_roteiro()
-        self._toast("Local removido do roteiro")
+        self._toast(t("toast_rem_generico"))
 
     def _otimizar_roteiro_ia(self):
-        """Reordena o roteiro em fluxo geográfico e cronológico ideal."""
-        ordem_ideal = ["ver-o-peso", "feliz-lusitania", "teatro-da-paz", "estacao-das-docas", "mangal", "basilica-nazare", "ilha-combu"]
+        """Reordena o roteiro em fluxo geográfico e cronológico ideal (diurno -> noturno)."""
+        ordem_ideal = [
+            "ver-o-peso",
+            "feliz-lusitania",
+            "teatro-da-paz",
+            "praca-republica",
+            "mangal",
+            "basilica-nazare",
+            "ilha-combu",
+            "estacao-das-docas",
+            "bistro-guajara-noturno",
+        ]
         self.roteiro.sort(key=lambda x: ordem_ideal.index(x.get("id")) if x.get("id") in ordem_ideal else 99)
         salvar_roteiro(self.roteiro)
         self.mostrar_roteiro()
-        self._toast("✨ Ordem ideal recalculada e sincronizada com o clima!", cor_bg=TERTIARY_CONTAINER)
+        self._toast(t("toast_ia_otimizado"), cor_bg=TERTIARY_CONTAINER)
 
     def _confirmar_salvamento_banco(self):
         salvar_roteiro(self.roteiro)
-        self._toast(f"💾 Roteiro com {len(self.roteiro)} locais salvo com sucesso no banco SQLite!", cor_bg=TERTIARY_CONTAINER)
+        self._toast(t("toast_roteiro_salvo", n=len(self.roteiro)), cor_bg=TERTIARY_CONTAINER)
 
     def _confirmar_limpar_roteiro(self):
         self.roteiro = limpar(usuario_id=self.usuario_id)
         self.mostrar_roteiro()
-        self._toast("Roteiro limpo")
+        self._toast(t("toast_roteiro_limpo"))
 
     def _criar_roteiro_vazio(self, master):
         vazio = ctk.CTkFrame(master, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
@@ -1635,10 +1830,10 @@ class BelemNaMaoApp(ctk.CTk):
         vi.pack(pady=48, padx=24)
 
         ctk.CTkLabel(vi, text="🗺️", font=fonte(48)).pack(pady=(0, 10))
-        ctk.CTkLabel(vi, text="Seu roteiro ainda está vazio", font=fonte(20, "bold"), text_color=TEXT_TITLE).pack(pady=(0, 6))
+        ctk.CTkLabel(vi, text=t("roteiro_vazio_titulo"), font=fonte(20, "bold"), text_color=TEXT_TITLE).pack(pady=(0, 6))
         ctk.CTkLabel(
             vi,
-            text="Explore as atrações de Belém e clique em '+ Roteiro' para montar seu roteiro personalizado.",
+            text=t("roteiro_vazio_desc"),
             font=fonte(13),
             text_color=TEXT_MUTED,
             justify="center",
@@ -1646,7 +1841,7 @@ class BelemNaMaoApp(ctk.CTk):
 
         ctk.CTkButton(
             vi,
-            text="Explorar Locais de Belém",
+            text=t("roteiro_vazio_btn"),
             height=40,
             corner_radius=8,
             fg_color=PRIMARY_BTN,
@@ -1657,99 +1852,398 @@ class BelemNaMaoApp(ctk.CTk):
         ).pack()
 
     # ==================================================================
-    # 6. Tela Sobre Belém (Guia Cultural, História e Clima)
+    # 6. Tela "Mais Visitados" (Ranking Dinâmico: Semana / Mês / Ano)
     # ==================================================================
-    def mostrar_sobre_belem(self):
+    def mostrar_mais_visitados(self):
         self._limpar_conteudo()
-        self._marcar_aba_ativa("Sobre Belém")
+        self._marcar_aba_ativa("ranking")
 
         rolagem = ctk.CTkScrollableFrame(self.conteudo, fg_color="transparent", corner_radius=0)
         rolagem.pack(fill="both", expand=True)
 
         inner = ctk.CTkFrame(rolagem, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=32, pady=(20, 24))
+        inner.pack(fill="x", padx=32, pady=(20, 40))
 
-        ctk.CTkLabel(inner, text="GUIA INTELIGENTE DA CIDADE", font=fonte(11, "bold"), text_color=SECONDARY).pack(anchor="w")
-        ctk.CTkLabel(inner, text="Sobre Belém do Pará", font=fonte(28, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
-        ctk.CTkLabel(
-            inner,
-            text="A metrópole da floresta, capital da Amazônia Atlântica e Cidade Criativa da Gastronomia pela UNESCO.",
-            font=fonte(13),
-            text_color=TEXT_MUTED,
-        ).pack(anchor="w", pady=(0, 20))
+        # Cabeçalho
+        topo = ctk.CTkFrame(inner, fg_color="transparent")
+        topo.pack(fill="x", pady=(0, 16))
 
-        # Cards Informativos
-        grid_sobre = ctk.CTkFrame(inner, fg_color="transparent")
-        grid_sobre.pack(fill="x", pady=(0, 16))
-        grid_sobre.grid_columnconfigure((0, 1), weight=1, uniform="sobre_col")
+        topo_esq = ctk.CTkFrame(topo, fg_color="transparent")
+        topo_esq.pack(side="left")
 
-        blocos_info = [
-            ("🌧️ A Lendária Chuva das 16h",
-             "Em Belém, os encontros costumam ser marcados 'antes ou depois da chuva'. A convecção equatorial diária gera nuvens cúmulo-nimbo que se precipitam com precisão entre 14h e 16h30, refrescando a temperatura e lavando as calçadas de mangueiras."),
-            ("🍲 Gastronomia Patrimônio UNESCO",
-             "Com o açaí consumido tradicionalmente com peixe frito, o tacacá fervente nas esquinas, o tucupi e o jambu que adormece os lábios, Belém possui a gastronomia mais autêntica e aromática do Brasil."),
-            ("⚓ O Guajará e a Foz do Rio Guamá",
-             "A água dita o ritmo da vida em Belém. Dezenas de ilhas contíguas (como o Combu, Mosqueiro e Cotijuba) oferecem refúgios de ecoturismo e praias de água doce com ondas."),
-            ("🛡️ Dicas de Segurança e Locomoção",
-             "A Cidade Velha, o Ver-o-Peso e as Docas contam com policiamento especializado do Batalhão Turístico (DPTUR). Prefira caminhadas durante o dia pela orla e use táxi/Uber para travessias noturnas."),
+        ctk.CTkLabel(topo_esq, text=t("ranking_eyebrow"), font=fonte(11, "bold"), text_color=SECONDARY).pack(anchor="w")
+        ctk.CTkLabel(topo_esq, text=t("ranking_titulo"), font=fonte(28, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
+        ctk.CTkLabel(topo_esq, text=t("ranking_subtitulo"), font=fonte(13), text_color=TEXT_MUTED).pack(anchor="w")
+
+        self.badge_fonte_ranking = ctk.CTkFrame(topo, fg_color=PANEL_SUBTLE, corner_radius=8, border_width=1, border_color=LINE)
+        self.badge_fonte_ranking.pack(side="right", pady=8)
+        self.lbl_fonte_ranking = ctk.CTkLabel(
+            self.badge_fonte_ranking,
+            text="",
+            font=fonte(11, "bold"),
+            text_color=TEXT_BRAND,
+            padx=12,
+            pady=6,
+        )
+        self.lbl_fonte_ranking.pack()
+
+        # Barra de Filtros Dinâmicos (Período, Mês, Ano)
+        barra_filtros = ctk.CTkFrame(inner, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
+        barra_filtros.pack(fill="x", pady=(0, 16))
+
+        bf_in = ctk.CTkFrame(barra_filtros, fg_color="transparent")
+        bf_in.pack(fill="x", padx=18, pady=12)
+
+        ctk.CTkLabel(bf_in, text=t("ranking_periodo_label"), font=fonte(12, "bold"), text_color=TEXT_TITLE).pack(
+            side="left", padx=(0, 8)
+        )
+
+        self._mapa_periodos = {
+            t("periodo_semana"): "semana",
+            t("periodo_mes"): "mes",
+            t("periodo_ano"): "ano",
+        }
+        self._mapa_periodos_inv = {v: k for k, v in self._mapa_periodos.items()}
+
+        self.seg_periodo = ctk.CTkSegmentedButton(
+            bf_in,
+            values=list(self._mapa_periodos.keys()),
+            height=34,
+            corner_radius=8,
+            fg_color=PANEL_SUBTLE,
+            selected_color=SEG_SELECTED_BG,
+            selected_hover_color=PRIMARY_HOVER,
+            unselected_color=PANEL_SUBTLE,
+            unselected_hover_color=LINE,
+            text_color=TEXT_EXPLORAR,
+            font=fonte(12, "bold"),
+            command=self._ao_alterar_periodo_ranking,
+        )
+        self.seg_periodo.set(self._mapa_periodos_inv.get(self.ranking_periodo, t("periodo_mes")))
+        self.seg_periodo.pack(side="left", padx=(0, 20))
+
+        # Seletor de Mês
+        ctk.CTkLabel(bf_in, text=t("ranking_mes_label"), font=fonte(12, "bold"), text_color=TEXT_TITLE).pack(
+            side="left", padx=(0, 8)
+        )
+        meses_nomes = lista_meses()
+        self._mapa_meses_idx = {nome: i + 1 for i, nome in enumerate(meses_nomes)}
+        self.menu_mes_ranking = ctk.CTkOptionMenu(
+            bf_in,
+            values=meses_nomes,
+            height=34,
+            corner_radius=8,
+            fg_color=PANEL_SUBTLE,
+            button_color=LINE,
+            button_hover_color=PRIMARY_HOVER,
+            text_color=TEXT_EXPLORAR,
+            font=fonte(12, "bold"),
+            command=self._ao_alterar_mes_ranking,
+        )
+        self.menu_mes_ranking.set(traduzir_mes(self.ranking_mes))
+        self.menu_mes_ranking.pack(side="left", padx=(0, 16))
+
+        # Seletor de Ano
+        ctk.CTkLabel(bf_in, text=t("ranking_ano_label"), font=fonte(12, "bold"), text_color=TEXT_TITLE).pack(
+            side="left", padx=(0, 8)
+        )
+        self.menu_ano_ranking = ctk.CTkOptionMenu(
+            bf_in,
+            values=["2026", "2025"],
+            height=34,
+            width=92,
+            corner_radius=8,
+            fg_color=PANEL_SUBTLE,
+            button_color=LINE,
+            button_hover_color=PRIMARY_HOVER,
+            text_color=TEXT_EXPLORAR,
+            font=fonte(12, "bold"),
+            command=self._ao_alterar_ano_ranking,
+        )
+        self.menu_ano_ranking.set(str(self.ranking_ano))
+        self.menu_ano_ranking.pack(side="left")
+
+        self.lbl_resumo_periodo = ctk.CTkLabel(bf_in, text="", font=fonte(12), text_color=TEXT_MUTED)
+        self.lbl_resumo_periodo.pack(side="right")
+
+        # KPIs do Ranking
+        self.strip_kpi_ranking = ctk.CTkFrame(inner, fg_color="transparent")
+        self.strip_kpi_ranking.pack(fill="x", pady=(0, 18))
+        self.strip_kpi_ranking.grid_columnconfigure((0, 1, 2), weight=1, uniform="rank_kpi")
+
+        # Container da Lista de Ranking
+        self.container_ranking = ctk.CTkFrame(inner, fg_color="transparent")
+        self.container_ranking.pack(fill="both", expand=True)
+
+        self._atualizar_estado_seletor_mes()
+        self._renderizar_ranking()
+
+    def _atualizar_estado_seletor_mes(self):
+        if self.ranking_periodo == "ano":
+            self.menu_mes_ranking.configure(state="disabled")
+        else:
+            self.menu_mes_ranking.configure(state="normal")
+
+    def _ao_alterar_periodo_ranking(self, rotulo: str):
+        self.ranking_periodo = self._mapa_periodos.get(rotulo, "mes")
+        self._atualizar_estado_seletor_mes()
+        self._renderizar_ranking()
+
+    def _ao_alterar_mes_ranking(self, nome_mes: str):
+        self.ranking_mes = self._mapa_meses_idx.get(nome_mes, 11)
+        self._renderizar_ranking()
+
+    def _ao_alterar_ano_ranking(self, ano_str: str):
+        try:
+            self.ranking_ano = int(ano_str)
+        except ValueError:
+            self.ranking_ano = 2026
+        self._renderizar_ranking()
+
+    def _renderizar_ranking(self):
+        for w in self.strip_kpi_ranking.winfo_children():
+            w.destroy()
+        for w in self.container_ranking.winfo_children():
+            w.destroy()
+
+        ranking, conectado_mysql = obter_ranking_locais_db(
+            periodo=self.ranking_periodo,
+            mes=self.ranking_mes,
+            ano=self.ranking_ano,
+        )
+
+        self.lbl_fonte_ranking.configure(
+            text=t("ranking_fonte_mysql") if conectado_mysql else t("ranking_fonte_local"),
+            text_color=SUCCESS if conectado_mysql else TEXT_BRAND,
+        )
+
+        nome_mes_atual = traduzir_mes(self.ranking_mes)
+        if self.ranking_periodo == "semana":
+            sub_per = t("ranking_subtitulo_periodo_semana", mes=nome_mes_atual, ano=self.ranking_ano)
+        elif self.ranking_periodo == "ano":
+            sub_per = t("ranking_subtitulo_periodo_ano", ano=self.ranking_ano)
+        else:
+            sub_per = t("ranking_subtitulo_periodo_mes", mes=nome_mes_atual, ano=self.ranking_ano)
+        self.lbl_resumo_periodo.configure(text=sub_per)
+
+        total_visitas = sum(item["visitas"] for item in ranking)
+        lider = ranking[0]["nome"] if ranking else "—"
+        total_avals = sum(item["avaliacoes_qtd"] for item in ranking)
+        soma_ponderada = sum(item["nota_media"] * item["avaliacoes_qtd"] for item in ranking)
+        media_ponderada = (soma_ponderada / total_avals) if total_avals > 0 else 0.0
+
+        kpis = [
+            ("👥", t("ranking_kpi_visitas"), f"{total_visitas:,}".replace(",", ".")),
+            ("🏆", t("ranking_kpi_lider"), lider),
+            ("⭐", t("ranking_kpi_media"), f"★ {media_ponderada:.2f}"),
         ]
+        for idx, (ic, tit, val) in enumerate(kpis):
+            c = ctk.CTkFrame(self.strip_kpi_ranking, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
+            c.grid(row=0, column=idx, padx=(0 if idx == 0 else 6, 0 if idx == 2 else 6), sticky="nsew")
+            ci = ctk.CTkFrame(c, fg_color="transparent")
+            ci.pack(fill="both", expand=True, padx=16, pady=12)
 
-        for i, (tit, desc) in enumerate(blocos_info):
-            b = ctk.CTkFrame(grid_sobre, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
-            b.grid(row=i // 2, column=i % 2, padx=6, pady=6, sticky="nsew")
+            top_k = ctk.CTkFrame(ci, fg_color="transparent")
+            top_k.pack(fill="x")
+            ctk.CTkLabel(top_k, text=ic, font=fonte(15)).pack(side="left", padx=(0, 6))
+            ctk.CTkLabel(top_k, text=tit, font=fonte(11, "bold"), text_color=TEXT_MUTED).pack(side="left")
+            ctk.CTkLabel(ci, text=val, font=fonte(17, "bold"), text_color=TEXT_KPI).pack(anchor="w", pady=(4, 0))
 
-            bi = ctk.CTkFrame(b, fg_color="transparent")
-            bi.pack(fill="both", expand=True, padx=24, pady=22)
+        if not ranking:
+            vazio = ctk.CTkFrame(self.container_ranking, fg_color=PANEL, corner_radius=12, border_width=1, border_color=LINE)
+            vazio.pack(fill="x", pady=16)
+            ctk.CTkLabel(vazio, text=t("ranking_vazio"), font=fonte(14), text_color=TEXT_MUTED, pady=36).pack()
+            return
 
-            ctk.CTkLabel(bi, text=tit, font=fonte(16, "bold"), text_color=TEXT_TITLE).pack(anchor="w", pady=(0, 6))
-            ctk.CTkLabel(bi, text=desc, font=fonte(13), text_color=TEXT_MUTED, justify="left", wraplength=480).pack(anchor="w")
+        max_visitas = max(item["visitas"] for item in ranking) or 1
+        locais_por_id = {l["id"]: l for l in self.locais}
 
-        # Rodapé Institucional alinhado à base
-        rodape_sb = ctk.CTkFrame(inner, fg_color=PANEL_SUBTLE, corner_radius=12, border_width=1, border_color=LINE)
-        rodape_sb.pack(side="bottom", fill="x", pady=(16, 0))
+        for item in ranking:
+            pos = item["posicao"]
+            loc_obj = locais_por_id.get(item["local_id"])
 
-        rs_in = ctk.CTkFrame(rodape_sb, fg_color="transparent")
-        rs_in.pack(fill="both", expand=True, padx=24, pady=18)
+            card = ctk.CTkFrame(
+                self.container_ranking,
+                fg_color=PANEL,
+                corner_radius=12,
+                border_width=1,
+                border_color=AMBER if pos == 1 else LINE,
+            )
+            card.pack(fill="x", pady=6)
 
-        ctk.CTkLabel(rs_in, text="BelémNaMão Guia Inteligente • Versão 2.5", font=fonte(13, "bold"), text_color=TEXT_TITLE).pack(anchor="w")
-        ctk.CTkLabel(
-            rs_in,
-            text="Desenvolvido para conectar turistas e residentes com o rico patrimônio arquitetônico, cultural e gastronômico do Pará.",
-            font=fonte(12),
-            text_color=TEXT_MUTED,
-        ).pack(anchor="w")
+            row_in = ctk.CTkFrame(card, fg_color="transparent")
+            row_in.pack(fill="x", padx=16, pady=12)
+
+            # 1. Posição / Medalha
+            if pos == 1:
+                medalha_bg, medalha_txt, medalha_fg = "#F59E0B", "🥇 #1", "#00132C"
+            elif pos == 2:
+                medalha_bg, medalha_txt, medalha_fg = "#CBD5E1", "🥈 #2", "#00132C"
+            elif pos == 3:
+                medalha_bg, medalha_txt, medalha_fg = "#D97706", "🥉 #3", "#FFFFFF"
+            else:
+                medalha_bg, medalha_txt, medalha_fg = PANEL_SUBTLE, f"#{pos}", TEXT_EXPLORAR
+
+            pos_box = ctk.CTkFrame(row_in, width=64, height=48, corner_radius=10, fg_color=medalha_bg)
+            pos_box.pack(side="left", padx=(0, 12))
+            pos_box.pack_propagate(False)
+            ctk.CTkLabel(pos_box, text=medalha_txt, font=fonte(14, "bold"), text_color=medalha_fg).pack(expand=True)
+
+            # 2. Miniatura do Local
+            img_thumb = obter_imagem_processada(item["local_id"], 96, 64, raio=8)
+            ctk.CTkLabel(row_in, text="", image=img_thumb).pack(side="left", padx=(0, 14))
+
+            # 3. Nome, Bairro, Categorias e Barra Proporcional
+            info_box = ctk.CTkFrame(row_in, fg_color="transparent")
+            info_box.pack(side="left", fill="both", expand=True, padx=(0, 12))
+
+            titulo_row = ctk.CTkFrame(info_box, fg_color="transparent")
+            titulo_row.pack(fill="x")
+            ctk.CTkLabel(titulo_row, text=item["nome"], font=fonte(16, "bold"), text_color=TEXT_EXPLORAR).pack(
+                side="left", padx=(0, 10)
+            )
+
+            cats_trad = [traduzir_categoria(c) for c in item.get("categoria", [])]
+            for c_nome in cats_trad[:2]:
+                badge = ctk.CTkFrame(titulo_row, fg_color=TAG_BG, corner_radius=6, border_width=1, border_color=TAG_BORDER)
+                badge.pack(side="left", padx=(0, 6))
+                ctk.CTkLabel(badge, text=c_nome, font=fonte(10, "bold"), text_color=TEXT_EXPLORAR, padx=8, pady=2).pack()
+
+            ctk.CTkLabel(
+                info_box,
+                text=f"📍 {item.get('bairro', 'Belém')}   •   {rotulo_preco(item.get('preco', 2))}",
+                font=fonte(12),
+                text_color=TEXT_MUTED,
+            ).pack(anchor="w", pady=(2, 6))
+
+            barra = ctk.CTkProgressBar(
+                info_box,
+                height=7,
+                corner_radius=4,
+                fg_color=PANEL_SUBTLE,
+                progress_color=AMBER if pos == 1 else PRIMARY_BTN,
+            )
+            barra.set(item["visitas"] / max_visitas)
+            barra.pack(fill="x", padx=(0, 24))
+
+            # 4. Métricas (Visitas + Avaliações + Nota Ponderada)
+            metrics_box = ctk.CTkFrame(row_in, fg_color="transparent", width=180)
+            metrics_box.pack(side="left", padx=(0, 12))
+
+            vis_fmt = f"{item['visitas']:,}".replace(",", ".")
+            av_fmt = f"{item['avaliacoes_qtd']:,}".replace(",", ".")
+            ctk.CTkLabel(
+                metrics_box,
+                text=t("ranking_visitas_qtd", n=vis_fmt),
+                font=fonte(15, "bold"),
+                text_color=TEXT_KPI,
+            ).pack(anchor="e")
+            ctk.CTkLabel(
+                metrics_box,
+                text=f"★ {item['nota_media']:.2f}  •  {t('ranking_avaliacoes_qtd', n=av_fmt)}",
+                font=fonte(11, "bold"),
+                text_color=AMBER,
+            ).pack(anchor="e")
+
+            # 5. Botões de Ação
+            if loc_obj is not None:
+                acoes = ctk.CTkFrame(row_in, fg_color="transparent")
+                acoes.pack(side="right")
+
+                presente = self._no_roteiro(loc_obj)
+                btn_rot = ctk.CTkButton(
+                    acoes,
+                    text=t("btn_no_roteiro") if presente else t("btn_add_roteiro"),
+                    width=105,
+                    height=34,
+                    corner_radius=8,
+                    fg_color=TERTIARY_CONTAINER if presente else PRIMARY_BTN,
+                    hover_color=TERTIARY if presente else PRIMARY_HOVER,
+                    text_color="#FFFFFF",
+                    font=fonte(11, "bold"),
+                )
+                btn_rot.configure(command=lambda l=loc_obj, b=btn_rot: self.alternar_roteiro_btn(l, b, estilo="card"))
+                btn_rot.pack(side="left", padx=(0, 6))
+
+                ctk.CTkButton(
+                    acoes,
+                    text=t("btn_detalhes"),
+                    width=84,
+                    height=34,
+                    corner_radius=8,
+                    fg_color=BTN_SECONDARY_BG,
+                    border_width=1,
+                    border_color=BTN_SECONDARY_BORDER,
+                    hover_color=BTN_SECONDARY_HOVER,
+                    text_color=TEXT_EXPLORAR,
+                    font=fonte(11, "bold"),
+                    command=lambda l=loc_obj: self.mostrar_detalhes(l, voltar=self.mostrar_mais_visitados),
+                ).pack(side="left")
 
     # ==================================================================
-    # 7. Helper Geral de Alternância de Roteiro
+    # 7. Helper Geral de Alternância de Roteiro (compatível com i18n)
     # ==================================================================
-    def alternar_roteiro_btn(self, local: Dict[str, Any], botao: Optional[ctk.CTkButton] = None):
-        """Adiciona ou remove do roteiro de forma reativa com feedback no botão."""
+    def alternar_roteiro_btn(
+        self,
+        local: Dict[str, Any],
+        botao: Optional[ctk.CTkButton] = None,
+        estilo: str = "card",
+    ):
+        """Adiciona ou remove do roteiro de forma reativa com feedback multilíngue."""
         presente = self._no_roteiro(local)
         if presente:
             self.roteiro = remover(self.roteiro, local["id"], usuario_id=self.usuario_id)
-            self._toast(f"{local['nome']} removido do roteiro")
+            self._toast(t("toast_rem_roteiro", nome=local["nome"]))
             if botao:
-                eh_fav = "Favoritos" in str(botao.cget("text"))
-                botao.configure(
-                    text="Salvar nos Favoritos" if eh_fav else "+ Roteiro",
-                    fg_color=BTN_SECONDARY_BG if eh_fav else PRIMARY_BTN,
-                    hover_color=BTN_SECONDARY_HOVER if eh_fav else PRIMARY_HOVER,
-                    text_color=BTN_SECONDARY_TEXT if eh_fav else "#FFFFFF",
-                )
+                if estilo == "fav":
+                    botao.configure(
+                        text=t("btn_salvar_fav"),
+                        fg_color=BTN_SECONDARY_BG,
+                        hover_color=BTN_SECONDARY_HOVER,
+                        text_color=BTN_SECONDARY_TEXT,
+                    )
+                elif estilo == "detalhe":
+                    botao.configure(
+                        text=t("detalhes_add_roteiro"),
+                        fg_color=PRIMARY_BTN,
+                        hover_color=PRIMARY_HOVER,
+                        text_color="#FFFFFF",
+                    )
+                else:
+                    botao.configure(
+                        text=t("btn_add_roteiro"),
+                        fg_color=PRIMARY_BTN,
+                        hover_color=PRIMARY_HOVER,
+                        text_color="#FFFFFF",
+                    )
         else:
             self.roteiro = adicionar(self.roteiro, local, usuario_id=self.usuario_id)
-            self._toast(f"✓ {local['nome']} adicionado ao roteiro!", cor_bg=TERTIARY_CONTAINER)
+            self._toast(t("toast_add_roteiro", nome=local["nome"]), cor_bg=TERTIARY_CONTAINER)
             if botao:
-                eh_fav = "Favoritos" in str(botao.cget("text"))
-                botao.configure(
-                    text="✓ Salvo no Roteiro",
-                    fg_color=TERTIARY_FIXED if eh_fav else TERTIARY_CONTAINER,
-                    hover_color=SECONDARY_FIXED if eh_fav else TERTIARY,
-                    text_color=TERTIARY_CONTAINER if eh_fav else "#FFFFFF",
-                )
+                if estilo == "fav":
+                    botao.configure(
+                        text=t("btn_salvo_roteiro"),
+                        fg_color=TERTIARY_FIXED,
+                        hover_color=SECONDARY_FIXED,
+                        text_color=TERTIARY_CONTAINER,
+                    )
+                elif estilo == "detalhe":
+                    botao.configure(
+                        text=t("detalhes_salvo_roteiro"),
+                        fg_color=TERTIARY_CONTAINER,
+                        hover_color=TERTIARY,
+                        text_color="#FFFFFF",
+                    )
+                else:
+                    botao.configure(
+                        text=t("btn_no_roteiro"),
+                        fg_color=TERTIARY_CONTAINER,
+                        hover_color=TERTIARY,
+                        text_color="#FFFFFF",
+                    )
 
         if hasattr(self, "btn_salvos_pill"):
-            self.btn_salvos_pill.configure(text=f"🔖 {len(self.roteiro)} salvos")
+            self.btn_salvos_pill.configure(text=t("btn_salvos_nav", n=len(self.roteiro)))
 
 
 if __name__ == "__main__":

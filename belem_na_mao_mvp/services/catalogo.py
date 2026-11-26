@@ -49,7 +49,7 @@ def buscar_locais(
             continue
         if categoria != "Todas" and categoria not in local.get("categoria", []):
             continue
-        if limite_preco is not None and local.get("preco", 2) > limite_preco:
+        if limite_preco is not None and int(local.get("preco", 2)) != limite_preco:
             continue
 
         resultado.append(local)
@@ -58,7 +58,11 @@ def buscar_locais(
 
 
 def rotulo_preco(valor: Any) -> str:
-    """Converte o valor numérico de preço para texto legível."""
-    return {1: "$ · Baixo", 2: "$$ · Médio", 3: "$$$ · Alto"}.get(valor, "Não informado")
+    """Converte o valor numérico de preço para texto legível no idioma ativo."""
+    try:
+        from services.i18n import traduzir_rotulo_preco
+        return traduzir_rotulo_preco(valor)
+    except Exception:
+        return {1: "$ · Acessível", 2: "$$ · Médio", 3: "$$$ · Alto"}.get(valor, "Não informado")
 
 # fim

@@ -9,6 +9,7 @@ import customtkinter as ctk
 from PIL import Image, ImageDraw
 
 from services.database import autenticar_usuario, cadastrar_usuario, inicializar_banco
+from services.i18n import IDIOMAS_DISPONIVEIS, ROTULOS_IDIOMA, get_idioma, set_idioma, t
 from views.theme import (
     AMBER,
     BG,
@@ -63,7 +64,7 @@ class JanelaCadastro(ctk.CTkToplevel):
     def __init__(self, parent, on_cadastro_sucesso: Optional[Callable[[str], None]] = None):
         super().__init__(parent)
         self.on_cadastro_sucesso = on_cadastro_sucesso
-        self.title("Criar Conta — BelémNaMão")
+        self.title(t("cad_window_title"))
         self.geometry("440x650")
         self.minsize(400, 580)
         self.configure(fg_color=BG)
@@ -91,12 +92,12 @@ class JanelaCadastro(ctk.CTkToplevel):
         rolagem.pack(fill="both", expand=True, padx=16, pady=16)
 
         # Cabeçalho
-        ctk.CTkLabel(rolagem, text="Criar sua Conta", font=fonte(22, "bold"), text_color=TEXT_TITLE).pack(
+        ctk.CTkLabel(rolagem, text=t("cad_titulo"), font=fonte(22, "bold"), text_color=TEXT_TITLE).pack(
             anchor="w", pady=(8, 2)
         )
         ctk.CTkLabel(
             rolagem,
-            text="Cadastre-se para personalizar roteiros, salvar atrações favoritas e explorar a cidade.",
+            text=t("cad_subtitulo"),
             font=fonte(12),
             text_color=TEXT_MUTED,
             wraplength=340,
@@ -106,15 +107,15 @@ class JanelaCadastro(ctk.CTkToplevel):
         self.lbl_msg = ctk.CTkLabel(rolagem, text="", font=fonte(12, "bold"), wraplength=340)
         self.lbl_msg.pack(fill="x", pady=(0, 6))
 
-        self.entry_nome = self._campo(rolagem, "Nome completo", "ex: Maria Santos")
-        self.entry_usuario = self._campo(rolagem, "Nome de usuário (login)", "ex: mariasantos")
-        self.entry_email = self._campo(rolagem, "E-mail", "ex: maria@exemplo.com")
-        self.entry_senha = self._campo(rolagem, "Senha (mínimo 4 dígitos)", "Digite sua senha", mostrar="•")
-        self.entry_confirma = self._campo(rolagem, "Confirmar senha", "Repita a senha", mostrar="•")
+        self.entry_nome = self._campo(rolagem, t("cad_nome"), t("cad_nome_ph"))
+        self.entry_usuario = self._campo(rolagem, t("cad_usuario"), t("cad_usuario_ph"))
+        self.entry_email = self._campo(rolagem, t("cad_email"), t("cad_email_ph"))
+        self.entry_senha = self._campo(rolagem, t("cad_senha"), t("cad_senha_ph"), mostrar="•")
+        self.entry_confirma = self._campo(rolagem, t("cad_confirma"), t("cad_confirma_ph"), mostrar="•")
 
         btn_cadastrar = ctk.CTkButton(
             rolagem,
-            text="Criar minha conta",
+            text=t("cad_btn_criar"),
             height=44,
             corner_radius=8,
             fg_color=PRIMARY_BTN,
@@ -127,7 +128,7 @@ class JanelaCadastro(ctk.CTkToplevel):
 
         ctk.CTkButton(
             rolagem,
-            text="Voltar ao login",
+            text=t("cad_btn_voltar"),
             height=36,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
@@ -169,15 +170,15 @@ class JanelaCadastro(ctk.CTkToplevel):
         confirma = self.entry_confirma.get()
 
         if not nome or not usuario or not senha:
-            self.lbl_msg.configure(text="Preencha nome, usuário e senha.", text_color=ERROR)
+            self.lbl_msg.configure(text=t("cad_erro_campos"), text_color=ERROR)
             return
 
         if len(senha) < 4:
-            self.lbl_msg.configure(text="A senha deve ter no mínimo 4 dígitos.", text_color=ERROR)
+            self.lbl_msg.configure(text=t("cad_erro_senha_curta"), text_color=ERROR)
             return
 
         if senha != confirma:
-            self.lbl_msg.configure(text="As senhas digitadas não coincidem.", text_color=ERROR)
+            self.lbl_msg.configure(text=t("cad_erro_confirma"), text_color=ERROR)
             return
 
         sucesso, msg = cadastrar_usuario(nome, usuario, email, senha)
@@ -204,7 +205,7 @@ class JanelaLogin(ctk.CTk):
         super().__init__()
         self.on_login_success = on_login_success
         self.on_admin_login = on_admin_login
-        self.title("BelémNaMão — Guia Inteligente")
+        self.title(t("login_window_title"))
         self.geometry(f"{self.LARGURA}x{self.ALTURA}")
         self.minsize(860, 580)
         self.configure(fg_color=BG)
@@ -222,6 +223,23 @@ class JanelaLogin(ctk.CTk):
 
         self.bind("<Return>", lambda _e: self.fazer_login())
         self.after(150, self.entry_user.focus_set)
+
+    def _alterar_idioma_login(self, codigo: str):
+        """Alterna o idioma da tela de login em tempo real preservando campos digitados."""
+        if get_idioma() == codigo:
+            return
+        usuario_digitado = self.entry_user.get() if hasattr(self, "entry_user") else ""
+        senha_digitada = self.entry_pass.get() if hasattr(self, "entry_pass") else ""
+        set_idioma(codigo)
+        self.title(t("login_window_title"))
+        for w in self.winfo_children():
+            w.destroy()
+        self._criar_lado_esquerdo()
+        self._criar_lado_direito()
+        if usuario_digitado:
+            self.entry_user.insert(0, usuario_digitado)
+        if senha_digitada:
+            self.entry_pass.insert(0, senha_digitada)
 
     def _centralizar(self):
         self.update_idletasks()
@@ -276,15 +294,15 @@ class JanelaLogin(ctk.CTk):
         ctk.CTkLabel(txt_logo, text="Belém", font=fonte(20, "bold"), text_color=TEXT_TITLE).pack(side="left")
         ctk.CTkLabel(txt_logo, text="NaMão", font=fonte(20, "bold"), text_color=SECONDARY).pack(side="left")
 
-        # Selo Pará, Amazônia
+        # Selo Pará, Amazônia + Seletor de Idiomas discreto
         selo = ctk.CTkFrame(topo, fg_color=PANEL_SUBTLE, corner_radius=8, border_width=1, border_color=LINE)
         selo.pack(side="right", pady=4)
         ctk.CTkLabel(
             selo,
-            text="● Pará, Amazônia",
+            text=t("login_selo"),
             font=fonte(11, "bold"),
             text_color=TERTIARY_CONTAINER,
-            padx=10,
+            padx=8,
             pady=4,
         ).pack()
 
@@ -294,32 +312,59 @@ class JanelaLogin(ctk.CTk):
         self.btn_tema_login = ctk.CTkButton(
             topo,
             text=texto_tema,
-            width=36,
-            height=32,
+            width=34,
+            height=30,
             corner_radius=8,
             fg_color=BTN_SECONDARY_BG,
             border_width=1,
             border_color=BTN_SECONDARY_BORDER,
             text_color=BTN_SECONDARY_TEXT,
             hover_color=BTN_SECONDARY_HOVER,
-            font=fonte(14),
+            font=fonte(13),
             command=self._alternar_modo_escuro_login,
         )
-        self.btn_tema_login.pack(side="right", padx=(0, 8))
+        self.btn_tema_login.pack(side="right", padx=(0, 6))
+
+        # Barra discreta de Idiomas (PT-BR / EN / ES)
+        barra_lang = ctk.CTkFrame(rolagem, fg_color="transparent")
+        barra_lang.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(
+            barra_lang,
+            text=f"🌐 {t('idioma_label')}",
+            font=fonte(11, "bold"),
+            text_color=TEXT_MUTED,
+        ).pack(side="left", padx=(0, 6))
+        idioma_atual = get_idioma()
+        for codigo in IDIOMAS_DISPONIVEIS:
+            ativo = codigo == idioma_atual
+            ctk.CTkButton(
+                barra_lang,
+                text=ROTULOS_IDIOMA[codigo],
+                width=48,
+                height=24,
+                corner_radius=6,
+                fg_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BG,
+                hover_color=PRIMARY_HOVER if ativo else BTN_SECONDARY_HOVER,
+                border_width=1,
+                border_color=PRIMARY_BTN if ativo else BTN_SECONDARY_BORDER,
+                text_color="#FFFFFF" if ativo else BTN_SECONDARY_TEXT,
+                font=fonte(10, "bold"),
+                command=lambda c=codigo: self._alterar_idioma_login(c),
+            ).pack(side="left", padx=2)
 
         # 2. Título de Boas-Vindas
         ctk.CTkLabel(
             rolagem,
-            text="Bem-vindo a Belém",
+            text=t("login_boas_vindas"),
             font=fonte(26, "bold"),
             text_color=TEXT_TITLE,
             justify="left",
             anchor="w",
-        ).pack(fill="x", pady=(8, 2))
+        ).pack(fill="x", pady=(4, 2))
 
         ctk.CTkLabel(
             rolagem,
-            text="Entre para montar seu roteiro do seu jeito e explorar a rica história, gastronomia e encantos da cidade das mangueiras.",
+            text=t("login_subtitulo"),
             font=fonte(13),
             text_color=TEXT_MUTED,
             justify="left",
@@ -336,7 +381,7 @@ class JanelaLogin(ctk.CTk):
 
         ctk.CTkLabel(
             demo_inner,
-            text="💡 Demo:",
+            text=t("login_demo_label"),
             font=fonte(12, "bold"),
             text_color=TEXT_BRAND,
         ).pack(side="left", padx=(0, 4))
@@ -350,7 +395,7 @@ class JanelaLogin(ctk.CTk):
 
         self.btn_preencher_demo = ctk.CTkButton(
             demo_inner,
-            text="Preencher",
+            text=t("login_btn_preencher"),
             width=76,
             height=28,
             corner_radius=8,
@@ -377,7 +422,7 @@ class JanelaLogin(ctk.CTk):
         self.lbl_feedback.pack(fill="x", pady=(0, 4))
 
         # 4. Campos do Formulário
-        ctk.CTkLabel(rolagem, text="USUÁRIO OU E-MAIL", font=fonte(11, "bold"), text_color=TEXT_TITLE).pack(
+        ctk.CTkLabel(rolagem, text=t("login_user_label"), font=fonte(11, "bold"), text_color=TEXT_TITLE).pack(
             anchor="w", padx=4, pady=(6, 4)
         )
         self.entry_user = ctk.CTkEntry(
@@ -388,7 +433,7 @@ class JanelaLogin(ctk.CTk):
             border_width=1,
             border_color=LINE,
             text_color=TEXT,
-            placeholder_text="ex: turista ou nome@exemplo.com",
+            placeholder_text=t("login_user_placeholder"),
             placeholder_text_color=TEXT_LIGHT,
             font=fonte(14),
         )
@@ -396,7 +441,7 @@ class JanelaLogin(ctk.CTk):
         self.entry_user.bind("<FocusIn>", lambda _e: self.entry_user.configure(border_color=PRIMARY_BTN, fg_color=PANEL))
         self.entry_user.bind("<FocusOut>", lambda _e: self.entry_user.configure(border_color=LINE, fg_color=PANEL_SUBTLE))
 
-        ctk.CTkLabel(rolagem, text="SENHA", font=fonte(11, "bold"), text_color=TEXT_TITLE).pack(
+        ctk.CTkLabel(rolagem, text=t("login_pass_label"), font=fonte(11, "bold"), text_color=TEXT_TITLE).pack(
             anchor="w", padx=4, pady=(4, 4)
         )
         senha_container = ctk.CTkFrame(rolagem, fg_color="transparent")
@@ -410,7 +455,7 @@ class JanelaLogin(ctk.CTk):
             border_width=1,
             border_color=LINE,
             text_color=TEXT,
-            placeholder_text="Digite sua senha de acesso",
+            placeholder_text=t("login_pass_placeholder"),
             placeholder_text_color=TEXT_LIGHT,
             font=fonte(14),
             show="•",
@@ -423,7 +468,7 @@ class JanelaLogin(ctk.CTk):
         self._senha_visivel = False
         self.btn_olho = ctk.CTkButton(
             self.entry_pass,
-            text="Mostrar",
+            text=t("login_mostrar"),
             width=62,
             height=28,
             corner_radius=6,
@@ -440,7 +485,7 @@ class JanelaLogin(ctk.CTk):
         # Opção Lembrar de mim
         self.check_lembrar = ctk.CTkCheckBox(
             rolagem,
-            text="Permanecer conectado neste computador",
+            text=t("login_lembrar"),
             font=fonte(12),
             text_color=TEXT_MUTED,
             fg_color=PRIMARY_BTN,
@@ -455,7 +500,7 @@ class JanelaLogin(ctk.CTk):
         # Botão Principal de Login
         self.btn_login = ctk.CTkButton(
             rolagem,
-            text="Entrar  →",
+            text=t("login_entrar"),
             height=44,
             corner_radius=8,
             fg_color=PRIMARY_BTN,
@@ -469,7 +514,7 @@ class JanelaLogin(ctk.CTk):
         # Continuar como Convidado
         ctk.CTkButton(
             rolagem,
-            text="Continuar sem login (Convidado)",
+            text=t("login_convidado"),
             fg_color="transparent",
             text_color=TEXT_MUTED,
             hover_color=PANEL_SUBTLE,
@@ -484,10 +529,10 @@ class JanelaLogin(ctk.CTk):
 
         rodape = ctk.CTkFrame(rolagem, fg_color="transparent")
         rodape.pack(pady=4)
-        ctk.CTkLabel(rodape, text="Ainda não tem conta?", text_color=TEXT_MUTED, font=fonte(13)).pack(side="left")
+        ctk.CTkLabel(rodape, text=t("login_sem_conta"), text_color=TEXT_MUTED, font=fonte(13)).pack(side="left")
         ctk.CTkButton(
             rodape,
-            text="Cadastre-se",
+            text=t("login_cadastre_se"),
             fg_color="transparent",
             text_color=TEXT_BRAND,
             hover_color=PANEL_SUBTLE,
@@ -500,7 +545,7 @@ class JanelaLogin(ctk.CTk):
         # Assinatura discreta
         ctk.CTkLabel(
             rolagem,
-            text="© 2025 BelémNaMão Guia Inteligente • Feito no Pará",
+            text=t("login_rodape"),
             font=fonte(11),
             text_color=TEXT_LIGHT,
         ).pack(pady=(12, 0))
@@ -553,7 +598,7 @@ class JanelaLogin(ctk.CTk):
         topo_pill.place(relx=0.94, rely=0.06, anchor="ne")
         ctk.CTkLabel(
             topo_pill,
-            text="★ Pôr do sol na Baía do Guajará",
+            text=t("login_showcase_pill"),
             font=fonte(12, "bold"),
             text_color="#FFFFFF",
             padx=14,
@@ -572,7 +617,7 @@ class JanelaLogin(ctk.CTk):
         pill_cat.pack(anchor="w", pady=(0, 8))
         ctk.CTkLabel(
             pill_cat,
-            text="AMAZÔNIA URBANA & CULTURAL",
+            text=t("login_showcase_tag"),
             font=fonte(10, "bold"),
             text_color="#FFFFFF",
             padx=10,
@@ -581,7 +626,7 @@ class JanelaLogin(ctk.CTk):
 
         ctk.CTkLabel(
             card_conteudo,
-            text="Descubra as cores, sabores e a história viva de Belém do Pará.",
+            text=t("login_showcase_titulo"),
             font=fonte(19, "bold"),
             text_color="#FFFFFF",
             justify="left",
@@ -591,7 +636,7 @@ class JanelaLogin(ctk.CTk):
 
         ctk.CTkLabel(
             card_conteudo,
-            text="Pontos turísticos catalogados, feiras tradicionais, o inigualável tacacá da tarde e roteiros fluviais para as ilhas ao alcance das suas mãos.",
+            text=t("login_showcase_desc"),
             font=fonte(12),
             text_color="#CADDEE",
             justify="left",
@@ -617,19 +662,19 @@ class JanelaLogin(ctk.CTk):
         self.entry_pass.delete(0, "end")
         self.entry_pass.insert(0, "123456")
 
-        self.btn_preencher_demo.configure(text="✓ Pronto!", fg_color=TERTIARY_FIXED, text_color=TERTIARY_CONTAINER)
-        self.lbl_feedback.configure(text="Credenciais demo inseridas. Clique em 'Entrar'.", text_color=SUCCESS)
+        self.btn_preencher_demo.configure(text=t("login_btn_pronto"), fg_color=TERTIARY_FIXED, text_color=TERTIARY_CONTAINER)
+        self.lbl_feedback.configure(text=t("login_demo_msg"), text_color=SUCCESS)
         self.after(
             1600,
             lambda: self.btn_preencher_demo.configure(
-                text="Preencher", fg_color=BTN_SECONDARY_BG, text_color=BTN_SECONDARY_TEXT
+                text=t("login_btn_preencher"), fg_color=BTN_SECONDARY_BG, text_color=BTN_SECONDARY_TEXT
             ),
         )
 
     def _alternar_senha(self):
         self._senha_visivel = not self._senha_visivel
         self.entry_pass.configure(show="" if self._senha_visivel else "•")
-        self.btn_olho.configure(text="Ocultar" if self._senha_visivel else "Mostrar")
+        self.btn_olho.configure(text=t("login_ocultar") if self._senha_visivel else t("login_mostrar"))
 
     def _abrir_cadastro(self):
         def apos_cadastro(novo_usuario: str):
@@ -637,7 +682,7 @@ class JanelaLogin(ctk.CTk):
             self.entry_user.insert(0, novo_usuario)
             self.entry_pass.delete(0, "end")
             self.lbl_feedback.configure(
-                text=f"Conta '{novo_usuario}' cadastrada com sucesso! Digite sua senha para entrar.",
+                text=t("login_cadastro_ok", user=novo_usuario),
                 text_color=SUCCESS,
             )
             self.entry_pass.focus_set()
@@ -680,7 +725,7 @@ class JanelaLogin(ctk.CTk):
 
         if not usuario or not senha:
             self.lbl_feedback.configure(
-                text="Por favor, preencha o usuário e a senha.",
+                text=t("login_erro_vazio"),
                 text_color=ERROR,
             )
             return
@@ -695,7 +740,7 @@ class JanelaLogin(ctk.CTk):
                     self.on_login_success()
         else:
             self.lbl_feedback.configure(
-                text="Usuário ou senha incorretos. Dica: use o botão 'Preencher' ou senha 'admin'.",
+                text=t("login_erro_invalido"),
                 text_color=ERROR,
             )
 

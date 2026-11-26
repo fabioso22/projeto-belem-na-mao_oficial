@@ -129,6 +129,23 @@ CREATE TABLE avaliacoes (
     INDEX idx_avaliacoes_local (local_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Tabela: visitas_mensais (Histórico mensal/semanal para ranking "Mais Visitados")
+CREATE TABLE visitas_mensais (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    local_id VARCHAR(50) NOT NULL,
+    ano SMALLINT NOT NULL,
+    mes TINYINT NOT NULL,
+    visitas_mes INT NOT NULL DEFAULT 0,
+    visitas_semana INT NOT NULL DEFAULT 0,
+    avaliacoes_qtd INT NOT NULL DEFAULT 0,
+    nota_media DECIMAL(3,2) NOT NULL DEFAULT 4.80,
+    UNIQUE KEY uk_visitas_local_ano_mes (local_id, ano, mes),
+    INDEX idx_visitas_ano_mes (ano, mes),
+    CONSTRAINT fk_visitas_local
+        FOREIGN KEY (local_id) REFERENCES locais(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ==============================================================================
 -- 4. INSERÇÃO DE DADOS INICIAIS (SEEDS / DML)
 -- ==============================================================================
@@ -149,9 +166,9 @@ INSERT INTO locais (id, nome, bairro, preco, descricao, por_que_visitar, duracao
  '1–2 horas', 'Belém, PA — confirme o endereço e o acesso antes da visita.', '', '2026-10-15 22:38:41'),
 
 ('estacao-das-docas', 'Estação das Docas', 'Campina', 3, 
- 'Complexo à beira da baía com opções de alimentação e espaços para passear.', 
- 'Boa opção para combinar passeio, vista para a água e uma refeição.', 
- '1–3 horas', 'Belém, PA — confirme horários e funcionamento antes da visita.', '', '2026-10-15 22:38:41'),
+ 'Complexo turístico e gastronômico à beira da Baía do Guajará que ganha vida especial à noite, com iluminação cênica dos guindastes históricos, bares, cervejaria artesanal, restaurantes regionais e música ao vivo.', 
+ 'Destino imperdível no fim de tarde e período noturno em Belém: combine o pôr do sol na orla com jantares típicos, chopes amazônicos, sorvetes regionais e apresentações musicais noturnas no Anfiteatro.', 
+ '2–4 horas (Noite)', 'Av. Boulevard Castilhos França, s/n — Campina, Belém, PA. Aberto até 00h (Sex/Sáb até 01h).', '', '2026-10-15 22:38:41'),
 
 ('feliz-lusitania', 'Complexo Feliz Lusitânia', 'Cidade Velha', 2, 
  'Área histórica de Belém com patrimônio arquitetônico e espaços culturais.', 
@@ -181,7 +198,12 @@ INSERT INTO locais (id, nome, bairro, preco, descricao, por_que_visitar, duracao
 ('basilica-nazare', 'Basílica de Nazaré', 'Nazaré', 1, 
  'Importante templo religioso e referência cultural da cidade.', 
  'Para conhecer sua arquitetura e a relevância cultural de Nazaré em Belém.', 
- '30–60 minutos', 'Belém, PA — respeite os horários de celebração e visitação.', '', '2026-10-15 22:38:41');
+ '30–60 minutos', 'Belém, PA — respeite os horários de celebração e visitação.', '', '2026-10-15 22:38:41'),
+
+('bistro-guajara-noturno', 'Bistrô do Guajará', 'Umarizal', 3,
+ 'Restaurante regional contemporâneo no coração do Umarizal, especializado em jantares amazônicos noturnos com filhote na brasa, pato no tucupi, drinques de jambu e música paraense ao vivo.',
+ 'Ideal para aproveitar a vida noturna gastronômica de Belém com alta culinária paraense, ambiente climatizado e carta autoral de coquetéis amazônicos.',
+ '2–3 horas (Noturno)', 'Av. Visconde de Souza Franco (Doca), Umarizal — Belém, PA. Funcionamento noturno: 18h30 às 00h30.', '', '2026-10-15 22:38:41');
 
 -- Associação de Categorias por Local (N:N)
 INSERT INTO local_categorias (local_id, categoria) VALUES
@@ -201,7 +223,9 @@ INSERT INTO local_categorias (local_id, categoria) VALUES
 ('ilha-combu', 'Gastronomia'),
 ('ilha-combu', 'Passeio'),
 ('basilica-nazare', 'Cultura'),
-('basilica-nazare', 'História');
+('basilica-nazare', 'História'),
+('bistro-guajara-noturno', 'Gastronomia'),
+('bistro-guajara-noturno', 'Passeio');
 
 -- Tags de Pesquisa por Local
 INSERT INTO local_tags (local_id, tag) VALUES
@@ -211,6 +235,10 @@ INSERT INTO local_tags (local_id, tag) VALUES
 ('estacao-das-docas', 'orla'),
 ('estacao-das-docas', 'restaurantes'),
 ('estacao-das-docas', 'passeio'),
+('estacao-das-docas', 'noturno'),
+('estacao-das-docas', 'vida noturna'),
+('estacao-das-docas', 'música ao vivo'),
+('estacao-das-docas', 'bares'),
 ('feliz-lusitania', 'história'),
 ('feliz-lusitania', 'arquitetura'),
 ('feliz-lusitania', 'museu'),
@@ -229,7 +257,13 @@ INSERT INTO local_tags (local_id, tag) VALUES
 ('ilha-combu', 'comida típica'),
 ('basilica-nazare', 'arquitetura'),
 ('basilica-nazare', 'religião'),
-('basilica-nazare', 'cultura');
+('basilica-nazare', 'cultura'),
+('bistro-guajara-noturno', 'noturno'),
+('bistro-guajara-noturno', 'jantar'),
+('bistro-guajara-noturno', 'restaurante'),
+('bistro-guajara-noturno', 'comida típica'),
+('bistro-guajara-noturno', 'umarizal'),
+('bistro-guajara-noturno', 'música ao vivo');
 
 -- Usuários Padrão e de Demonstração
 -- Senha de 'turista': 123456

@@ -38,23 +38,25 @@ LINE = ("#E2E8F0", "#334155")                  # Bordas sutis padronizadas em 1p
 LINE_LIGHT = ("#EEF2F6", "#1E293B")            # Linhas ultrafinas
 
 # Tipografia e Contrastes Aperfeiçoados (Prioridade Máxima Tema Escuro)
-TEXT = ("#0B1C30", "#F8FAFC")                  # Texto principal: branco #F8FAFC no escuro
-TEXT_TITLE = ("#00132C", "#F8FAFC")            # Títulos de página e cards: branco #F8FAFC
+TEXT = ("#0B1C30", "#FFFFFF")                  # Texto principal: branco puro #FFFFFF no escuro
+TEXT_TITLE = ("#00132C", "#FFFFFF")            # Títulos de página e cards: branco puro #FFFFFF
+TEXT_EXPLORAR = ("#0B1C30", "#FFFFFF")         # Alto contraste na tela Explorar (#FFFFFF no escuro)
 TEXT_BRAND = ("#0369A1", "#38BDF8")            # Azul celeste vibrante #38BDF8
 TEXT_KPI = ("#0284C7", "#38BDF8")              # Valores numéricos dos KPIs: celeste #38BDF8
-TEXT_MUTED = ("#475569", "#94A3B8")            # Textos secundários e descrições: #94A3B8
+TEXT_MUTED = ("#475569", "#CBD5E1")            # Textos secundários legíveis em tema escuro
 TEXT_LIGHT = ("#64748B", "#CBD5E1")            # Placeholders e textos auxiliares: #CBD5E1
 
-# Botões Secundários Padronizados (Fundo #1E293B, Borda #334155, Texto #E2E8F0)
+# Botões Secundários Padronizados (Fundo #1E293B, Borda #334155, Texto #FFFFFF no escuro)
 BTN_SECONDARY_BG = ("#F1F5F9", "#1E293B")
 BTN_SECONDARY_HOVER = ("#E2E8F0", "#26354D")
 BTN_SECONDARY_BORDER = ("#CBD5E1", "#334155")
-BTN_SECONDARY_TEXT = ("#0B1C30", "#E2E8F0")
+BTN_SECONDARY_TEXT = ("#0B1C30", "#FFFFFF")
+SEG_SELECTED_BG = ("#93C5FD", "#0284C7")       # Fundo selecionado do SegmentedButton com ótimo contraste
 
-# Tags e Badges Padronizadas (Fundo #1E293B, Borda #334155, Texto #60A5FA / #E2E8F0)
+# Tags e Badges Padronizadas
 TAG_BG = ("#EFF6FF", "#1E293B")
 TAG_BORDER = ("#BFDBFE", "#334155")
-TAG_TEXT = ("#1E40AF", "#60A5FA")
+TAG_TEXT = ("#1E40AF", "#FFFFFF")
 
 AMBER = "#F59E0B"                               # Estrelas de avaliação e destaques solares
 SUCCESS = "#10B981"                             # Sucesso / confirmado
@@ -136,7 +138,8 @@ def obter_caminho_imagem_local(local_id: str) -> Optional[Path]:
         "ver-o-peso": "ver-o-peso.jpg",
         "estacao-das-docas": "estacao-das-docas.jpg",
         "mangal": "mangal.jpg",
-        "ilha-combu": "ilha-combu.jpg"
+        "ilha-combu": "ilha-combu.jpg",
+        "bistro-guajara-noturno": "bistro-guajara-noturno.jpg",
     }
     alias = mapa_aliases.get(local_id)
     if alias and (pasta_imagens / alias).is_file():
