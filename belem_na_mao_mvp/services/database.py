@@ -7,34 +7,97 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import mysql.connector
 from mysql.connector import Error as MySQLError, IntegrityError
+from mysql.connector.pooling import MySQLConnectionPool
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 LOCAIS_JSON = DATA_DIR / "locais.json"
 ROTEIRO_JSON = DATA_DIR / "roteiro.json"
 
+
+def _carregar_env() -> None:
+    """Carrega variáveis de um arquivo .env local (se existir) sem dependências extras."""
+    for candidato in (ROOT / ".env", ROOT.parent / ".env"):
+        if candidato.is_file():
+            try:
+                for linha in candidato.read_text(encoding="utf-8").splitlines():
+                    linha = linha.strip()
+                    if not linha or linha.startswith("#") or "=" not in linha:
+                        continue
+                    chave, valor = linha.split("=", 1)
+                    chave = chave.strip()
+                    valor = valor.strip().strip('"').strip("'")
+                    if chave and chave not in os.environ:
+                        os.environ[chave] = valor
+            except Exception:
+                pass
+
+
+_carregar_env()
+
 # ----------------------------------------------------------------------
-# Configuração da Conexão MySQL Online / Local
-# Preencha abaixo com os dados do seu servidor MySQL online ou defina
-# variáveis de ambiente (MYSQL_HOST, MYSQL_PORT, MYSQL_USER, etc.)
+# Configuração da Conexão MySQL Workbench (Local)
+# Pode ser sobrescrita por arquivo .env ou variáveis de ambiente.
 # ----------------------------------------------------------------------
 MYSQL_CONFIG: Dict[str, Any] = {
-    "host": os.environ.get("MYSQL_HOST", "mysql-bnamao-belem-na-mao.f.aivencloud.com"),
-    "port": int(os.environ.get("MYSQL_PORT", "10947")),
-    "user": os.environ.get("MYSQL_USER", "avnadmin"),
-    "password": os.environ.get("MYSQL_PASSWORD", "AVNS_cxfMQGehEqHY5DvsFc_"),
-    "database": os.environ.get("MYSQL_DATABASE", "bnamao"),
+    "host": os.environ.get("MYSQL_HOST", "127.0.0.1"),
+    "port": int(os.environ.get("MYSQL_PORT", "3306")),
+    "user": os.environ.get("MYSQL_USER", "root"),
+    "password": os.environ.get("MYSQL_PASSWORD", ""),
+    "database": os.environ.get("MYSQL_DATABASE", "belem_na_mao"),
     "charset": "utf8mb4",
     "use_unicode": True,
     "autocommit": False,
-    "connection_timeout": int(os.environ.get("MYSQL_TIMEOUT", "10")),
+    "connection_timeout": int(os.environ.get("MYSQL_TIMEOUT", "6")),
 }
+
+_POOL_MYSQL: Optional[MySQLConnectionPool] = None
+_BANCO_INICIALIZADO: bool = False
+_CACHE_LOCAIS: Optional[List[Dict[str, Any]]] = None
+_CACHE_TOP3: Dict[str, Tuple[List[Dict[str, Any]], bool]] = {}
+
+
+def limpar_cache_memoria() -> None:
+    """Limpa caches em memória quando há escrita ou troca de dados."""
+    global _CACHE_LOCAIS
+    _CACHE_LOCAIS = None
+    _CACHE_TOP3.clear()
+
+
+def _garantir_database_existe() -> None:
+    """Cria o schema configurado no MySQL local caso ainda não exista."""
+    cfg_sem_db = {k: v for k, v in MYSQL_CONFIG.items() if k != "database"}
+    conn = mysql.connector.connect(**cfg_sem_db)
+    try:
+        cur = conn.cursor()
+        db_name = MYSQL_CONFIG["database"]
+        cur.execute(
+            f"CREATE DATABASE IF NOT EXISTS `{db_name}` "
+            "DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;"
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        if conn.is_connected():
+            conn.close()
+
+
+def _obter_pool() -> MySQLConnectionPool:
+    global _POOL_MYSQL
+    if _POOL_MYSQL is None:
+        try:
+            _POOL_MYSQL = MySQLConnectionPool(pool_name="belem_pool", pool_size=5, **MYSQL_CONFIG)
+        except MySQLError:
+            _garantir_database_existe()
+            _POOL_MYSQL = MySQLConnectionPool(pool_name="belem_pool", pool_size=5, **MYSQL_CONFIG)
+    return _POOL_MYSQL
 
 
 @contextmanager
 def obter_conexao() -> Generator[mysql.connector.MySQLConnection, None, None]:
-    """Retorna uma conexão ativa com o banco de dados MySQL configurado."""
-    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    """Retorna uma conexão reutilizada do pool MySQL local."""
+    pool = _obter_pool()
+    conn = pool.get_connection()
     try:
         yield conn
     finally:
@@ -443,10 +506,14 @@ def popular_dados_iniciais():
         cursor.close()
 
 
-def inicializar_banco():
-    """Garante a criação de tabelas e carregamento inicial de dados no MySQL."""
+def inicializar_banco(forcar: bool = False):
+    """Garante a criação de tabelas e carga inicial apenas uma vez por sessão."""
+    global _BANCO_INICIALIZADO
+    if _BANCO_INICIALIZADO and not forcar:
+        return
     criar_tabelas()
     popular_dados_iniciais()
+    _BANCO_INICIALIZADO = True
 
 
 # ----------------------------------------------------------------------
@@ -524,28 +591,39 @@ def buscar_usuario_por_id(usuario_id: int) -> Optional[Dict[str, Any]]:
 # ----------------------------------------------------------------------
 # Serviços do Catálogo de Locais
 # ----------------------------------------------------------------------
-def listar_todos_locais() -> List[Dict[str, Any]]:
-    """Retorna todos os locais cadastrados no MySQL com suas categorias e tags."""
+def listar_todos_locais(usar_cache: bool = True) -> List[Dict[str, Any]]:
+    """Retorna todos os locais do MySQL em consulta única (sem N+1) com cache em memória."""
+    global _CACHE_LOCAIS
+    if usar_cache and _CACHE_LOCAIS is not None:
+        return [dict(item) for item in _CACHE_LOCAIS]
+
     inicializar_banco()
     with obter_conexao() as conn:
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT id, nome, bairro, preco, descricao, por_que_visitar, duracao, endereco, imagem
-            FROM locais
-            ORDER BY criado_em ASC, id ASC;
+            SELECT
+                l.id, l.nome, l.bairro, l.preco, l.descricao,
+                l.por_que_visitar, l.duracao, l.endereco, l.imagem,
+                GROUP_CONCAT(DISTINCT lc.categoria ORDER BY lc.categoria SEPARATOR '||') AS categorias_str,
+                GROUP_CONCAT(DISTINCT lt.tag ORDER BY lt.tag SEPARATOR '||') AS tags_str
+            FROM locais l
+            LEFT JOIN local_categorias lc ON l.id = lc.local_id
+            LEFT JOIN local_tags lt ON l.id = lt.local_id
+            GROUP BY l.id, l.nome, l.bairro, l.preco, l.descricao,
+                     l.por_que_visitar, l.duracao, l.endereco, l.imagem, l.criado_em
+            ORDER BY l.criado_em ASC, l.id ASC;
         """)
-        locais = [dict(row) for row in cursor.fetchall()]
-
-        # Buscar categorias e tags agrupadas
-        for loc in locais:
-            loc_id = loc["id"]
-            cursor.execute("SELECT categoria FROM local_categorias WHERE local_id = %s;", (loc_id,))
-            loc["categoria"] = [r["categoria"] for r in cursor.fetchall()]
-
-            cursor.execute("SELECT tag FROM local_tags WHERE local_id = %s;", (loc_id,))
-            loc["tags"] = [r["tag"] for r in cursor.fetchall()]
+        locais = []
+        for row in cursor.fetchall():
+            d = dict(row)
+            cats = d.pop("categorias_str", None)
+            tags = d.pop("tags_str", None)
+            d["categoria"] = cats.split("||") if cats else []
+            d["tags"] = tags.split("||") if tags else []
+            locais.append(d)
 
         cursor.close()
+        _CACHE_LOCAIS = [dict(item) for item in locais]
         return locais
 
 
@@ -896,6 +974,126 @@ def obter_ranking_locais_db(
     for idx, item in enumerate(ranking, start=1):
         item["posicao"] = idx
     return ranking, False
+
+
+def obter_top3_por_categoria_db(
+    categoria: str = "Todas",
+    usar_cache: bool = True,
+) -> Tuple[List[Dict[str, Any]], bool]:
+    """
+    Retorna o Top 3 dos locais mais visitados para a categoria selecionada
+    ('Todas', 'Gastronomia', 'Cultura', 'História', 'Passeio', 'Natureza'),
+    com soma de visitas, média ponderada de avaliações e cache em memória.
+    """
+    cat_norm = str(categoria or "Todas").strip()
+    if usar_cache and cat_norm in _CACHE_TOP3:
+        itens, conectado = _CACHE_TOP3[cat_norm]
+        return [dict(i) for i in itens], conectado
+
+    try:
+        inicializar_banco()
+        with obter_conexao() as conn:
+            cursor = conn.cursor(dictionary=True)
+            filtro_cat = ""
+            params: List[Any] = []
+            if cat_norm != "Todas":
+                filtro_cat = "WHERE EXISTS (SELECT 1 FROM local_categorias lc2 WHERE lc2.local_id = l.id AND lc2.categoria = %s)"
+                params.append(cat_norm)
+
+            cursor.execute(f"""
+                SELECT
+                    l.id AS local_id,
+                    l.nome,
+                    l.bairro,
+                    l.preco,
+                    SUM(v.visitas_mes) AS visitas,
+                    (SUM(v.avaliacoes_qtd) + COALESCE(MAX(a.real_qtd), 0)) AS avaliacoes_qtd,
+                    ROUND(
+                        (SUM(v.nota_media * v.avaliacoes_qtd) + COALESCE(MAX(a.real_soma), 0)) /
+                        NULLIF(SUM(v.avaliacoes_qtd) + COALESCE(MAX(a.real_qtd), 0), 0),
+                        2
+                    ) AS nota_media,
+                    GROUP_CONCAT(DISTINCT lc.categoria ORDER BY lc.categoria SEPARATOR '||') AS categorias_str
+                FROM locais l
+                JOIN visitas_mensais v ON v.local_id = l.id
+                LEFT JOIN local_categorias lc ON lc.local_id = l.id
+                LEFT JOIN (
+                    SELECT local_id, COUNT(*) AS real_qtd, SUM(nota) AS real_soma
+                    FROM avaliacoes
+                    WHERE nota IS NOT NULL
+                    GROUP BY local_id
+                ) a ON a.local_id = l.id
+                {filtro_cat}
+                GROUP BY l.id, l.nome, l.bairro, l.preco
+                ORDER BY visitas DESC, nota_media DESC
+                LIMIT 3;
+            """, params)
+
+            rows = []
+            for idx, r in enumerate(cursor.fetchall(), start=1):
+                d = dict(r)
+                cats = d.pop("categorias_str", None)
+                d["posicao"] = idx
+                d["visitas"] = int(d.get("visitas") or 0)
+                d["avaliacoes_qtd"] = int(d.get("avaliacoes_qtd") or 0)
+                d["nota_media"] = float(d.get("nota_media") or 4.8)
+                d["categoria"] = cats.split("||") if cats else []
+                rows.append(d)
+
+            cursor.close()
+            if rows:
+                _CACHE_TOP3[cat_norm] = ([dict(i) for i in rows], True)
+                return rows, True
+    except Exception as e:
+        print(f"[Aviso] Usando base estruturada local para Top 3 ({e})")
+
+    # Fallback estruturado offline
+    locais_mapa: Dict[str, Dict[str, Any]] = {}
+    if LOCAIS_JSON.exists():
+        try:
+            with LOCAIS_JSON.open("r", encoding="utf-8") as f:
+                for loc in json.load(f):
+                    locais_mapa[loc["id"]] = loc
+        except Exception:
+            pass
+
+    agrupado: Dict[str, Dict[str, Any]] = {}
+    for r in _gerar_dados_visitas_padrao():
+        lid = r["local_id"]
+        info = locais_mapa.get(lid, {})
+        cats = info.get("categoria", ["Passeio"])
+        if cat_norm != "Todas" and cat_norm not in cats:
+            continue
+
+        if lid not in agrupado:
+            agrupado[lid] = {
+                "local_id": lid,
+                "nome": info.get("nome", lid),
+                "bairro": info.get("bairro", "Belém"),
+                "preco": info.get("preco", 2),
+                "categoria": cats,
+                "visitas": 0,
+                "avaliacoes_qtd": 0,
+                "soma_ponderada": 0.0,
+            }
+        agrupado[lid]["visitas"] += r["visitas_mes"]
+        agrupado[lid]["avaliacoes_qtd"] += r["avaliacoes_qtd"]
+        agrupado[lid]["soma_ponderada"] += r["nota_media"] * r["avaliacoes_qtd"]
+
+    ranking = []
+    for item in agrupado.values():
+        avals_total = item["avaliacoes_qtd"]
+        soma_pond = item.pop("soma_ponderada")
+        item["nota_media"] = round(soma_pond / avals_total, 2) if avals_total > 0 else 4.8
+        ranking.append(item)
+
+    ranking.sort(key=lambda x: (x["visitas"], x["nota_media"]), reverse=True)
+    top3 = ranking[:3]
+    for idx, item in enumerate(top3, start=1):
+        item["posicao"] = idx
+
+    _CACHE_TOP3[cat_norm] = ([dict(i) for i in top3], False)
+    return top3, False
 
 
 if __name__ == "__main__":

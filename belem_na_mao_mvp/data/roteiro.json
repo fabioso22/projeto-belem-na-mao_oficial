@@ -1,46 +1,82 @@
 [
   {
-    "id": "estacao-das-docas",
-    "nome": "Estação das Docas",
-    "bairro": "Campina",
-    "preco": 3,
-    "descricao": "Complexo turístico e gastronômico à beira da Baía do Guajará que ganha vida especial à noite, com iluminação cênica dos guindastes históricos, bares, cervejaria artesanal, restaurantes regionais e música ao vivo.",
-    "por_que_visitar": "Destino imperdível no fim de tarde e período noturno em Belém: combine o pôr do sol na orla com jantares típicos, chopes amazônicos, sorvetes regionais e apresentações musicais noturnas no Anfiteatro.",
-    "duracao": "2–4 horas (Noite)",
-    "endereco": "Av. Boulevard Castilhos França, s/n — Campina, Belém, PA. Aberto até 00h (Sex/Sáb até 01h).",
-    "imagem": "",
+    "id": "ver-o-peso",
+    "nome": "Mercado Ver-o-Peso",
     "categoria": [
       "Gastronomia",
-      "Passeio"
+      "Cultura"
     ],
+    "bairro": "Cidade Velha",
+    "preco": 1,
+    "descricao": "Um dos lugares mais conhecidos de Belém, com mercado, ingredientes regionais e movimento às margens da baía.",
+    "por_que_visitar": "Para conhecer sabores, aromas e parte importante do cotidiano e da cultura paraense.",
+    "duracao": "1–2 horas",
+    "endereco": "Belém, PA — confirme o endereço e o acesso antes da visita.",
     "tags": [
-      "bares",
-      "música ao vivo",
-      "noturno",
-      "orla",
-      "passeio",
-      "restaurantes",
-      "vida noturna"
+      "comida típica",
+      "mercado",
+      "cultura"
     ]
   },
   {
     "id": "feliz-lusitania",
     "nome": "Complexo Feliz Lusitânia",
+    "categoria": [
+      "Cultura",
+      "História"
+    ],
     "bairro": "Cidade Velha",
     "preco": 2,
     "descricao": "Área histórica de Belém com patrimônio arquitetônico e espaços culturais.",
     "por_que_visitar": "Para explorar a história da cidade e conhecer construções emblemáticas.",
     "duracao": "1–2 horas",
     "endereco": "Belém, PA — verifique horários dos espaços que pretende visitar.",
-    "imagem": "",
-    "categoria": [
-      "Cultura",
-      "História"
-    ],
     "tags": [
-      "arquitetura",
       "história",
+      "arquitetura",
       "museu"
+    ]
+  },
+  {
+    "id": "mangal",
+    "nome": "Mangal das Garças",
+    "categoria": [
+      "Natureza",
+      "Passeio"
+    ],
+    "bairro": "Cidade Velha",
+    "preco": 2,
+    "descricao": "Parque urbano com áreas verdes e espaços de observação da natureza.",
+    "por_que_visitar": "Uma pausa ao ar livre para apreciar paisagens e biodiversidade regional.",
+    "duracao": "1–2 horas",
+    "endereco": "Belém, PA — confirme ingresso e horários antes da visita.",
+    "tags": [
+      "parque",
+      "natureza",
+      "família"
+    ]
+  },
+  {
+    "id": "estacao-das-docas",
+    "nome": "Estação das Docas",
+    "categoria": [
+      "Gastronomia",
+      "Passeio"
+    ],
+    "bairro": "Campina",
+    "preco": 3,
+    "descricao": "Complexo turístico e gastronômico à beira da Baía do Guajará que ganha vida especial à noite, com iluminação cênica dos guindastes históricos, bares, cervejaria artesanal, restaurantes regionais e música ao vivo.",
+    "por_que_visitar": "Destino imperdível no fim de tarde e período noturno em Belém: combine o pôr do sol na orla com jantares típicos, chopes amazônicos, sorvetes regionais e apresentações musicais noturnas no Anfiteatro.",
+    "duracao": "2–4 horas (Noite)",
+    "endereco": "Av. Boulevard Castilhos França, s/n — Campina, Belém, PA. Aberto até 00h (Sex/Sáb até 01h).",
+    "tags": [
+      "orla",
+      "restaurantes",
+      "passeio",
+      "noturno",
+      "vida noturna",
+      "música ao vivo",
+      "bares"
     ]
   }
 ]

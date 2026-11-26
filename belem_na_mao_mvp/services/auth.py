@@ -32,6 +32,7 @@ from views.theme import (
     SUCCESS,
     TERTIARY_CONTAINER,
     TERTIARY_FIXED,
+    ON_TERTIARY_FIXED,
     TEXT,
     TEXT_BRAND,
     TEXT_LIGHT,
@@ -301,7 +302,7 @@ class JanelaLogin(ctk.CTk):
             selo,
             text=t("login_selo"),
             font=fonte(11, "bold"),
-            text_color=TERTIARY_CONTAINER,
+            text_color=ON_TERTIARY_FIXED,
             padx=8,
             pady=4,
         ).pack()
@@ -662,7 +663,7 @@ class JanelaLogin(ctk.CTk):
         self.entry_pass.delete(0, "end")
         self.entry_pass.insert(0, "123456")
 
-        self.btn_preencher_demo.configure(text=t("login_btn_pronto"), fg_color=TERTIARY_FIXED, text_color=TERTIARY_CONTAINER)
+        self.btn_preencher_demo.configure(text=t("login_btn_pronto"), fg_color=TERTIARY_FIXED, text_color=ON_TERTIARY_FIXED)
         self.lbl_feedback.configure(text=t("login_demo_msg"), text_color=SUCCESS)
         self.after(
             1600,

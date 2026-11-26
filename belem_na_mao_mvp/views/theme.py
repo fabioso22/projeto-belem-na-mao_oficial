@@ -25,38 +25,38 @@ SECONDARY_CONTAINER = ("#FD829B", "#E0657F")   # Açaí claro
 SECONDARY_FIXED = ("#FFD9DE", "#40131F")       # Rosa / Açaí pastel para badges
 ON_SECONDARY_FIXED = ("#400014", "#FFD9DE")    # Texto sobre badge pastel
 
-TERTIARY = ("#012E21", "#024733")              # Verde Floresta Amazônica profundo
-TERTIARY_CONTAINER = ("#0A4D38", "#083C2C")    # Container verde
-TERTIARY_FIXED = ("#C0ECD7", "#0D3325")        # Menta claro para status positivo
-ON_TERTIARY_FIXED = ("#002116", "#C0ECD7")     # Texto escuro sobre menta
-ON_TERTIARY_VARIANT = ("#264E3F", "#A4D0BC")   # Verde floresta médio
+TERTIARY = ("#047857", "#059669")              # Verde Floresta Amazônica acessível
+TERTIARY_CONTAINER = ("#065F46", "#065F46")    # Container verde com texto branco
+TERTIARY_FIXED = ("#D1FAE5", "#064E3B")        # Menta claro / Esmeralda escuro para status positivo
+ON_TERTIARY_FIXED = ("#065F46", "#34D399")     # Alto contraste: esmeralda escuro no claro / esmeralda vibrante no escuro
+ON_TERTIARY_VARIANT = ("#047857", "#6EE7B7")   # Verde legível em ambos os temas
 
-BG = ("#F8F9FF", "#070E18")                    # Fundo geral ultra clean / Noite amazônica
-PANEL = ("#FFFFFF", "#0E1A2B")                 # Cartões e superfícies brancas / Grafite escuro
-PANEL_SUBTLE = ("#F1F5F9", "#1E293B")          # Painel elevado / fundo secundário #1E293B
-LINE = ("#E2E8F0", "#334155")                  # Bordas sutis padronizadas em 1px #334155
+BG = ("#F8FAFC", "#070E18")                    # Fundo geral harmônico claro (#F8FAFC) / Noite amazônica
+PANEL = ("#FFFFFF", "#0E1A2B")                 # Cartões brancos (#FFFFFF) / Grafite escuro
+PANEL_SUBTLE = ("#F1F5F9", "#1E293B")          # Painel elevado / fundo secundário
+LINE = ("#E2E8F0", "#334155")                  # Bordas sutis padronizadas (#E2E8F0 / #334155)
 LINE_LIGHT = ("#EEF2F6", "#1E293B")            # Linhas ultrafinas
 
-# Tipografia e Contrastes Aperfeiçoados (Prioridade Máxima Tema Escuro)
-TEXT = ("#0B1C30", "#FFFFFF")                  # Texto principal: branco puro #FFFFFF no escuro
-TEXT_TITLE = ("#00132C", "#FFFFFF")            # Títulos de página e cards: branco puro #FFFFFF
-TEXT_EXPLORAR = ("#0B1C30", "#FFFFFF")         # Alto contraste na tela Explorar (#FFFFFF no escuro)
-TEXT_BRAND = ("#0369A1", "#38BDF8")            # Azul celeste vibrante #38BDF8
-TEXT_KPI = ("#0284C7", "#38BDF8")              # Valores numéricos dos KPIs: celeste #38BDF8
-TEXT_MUTED = ("#475569", "#CBD5E1")            # Textos secundários legíveis em tema escuro
-TEXT_LIGHT = ("#64748B", "#CBD5E1")            # Placeholders e textos auxiliares: #CBD5E1
+# Tipografia e Contrastes Aperfeiçoados (Light Mode #0F172A/#475569 e Dark Mode #FFFFFF/#CBD5E1)
+TEXT = ("#0F172A", "#FFFFFF")                  # Texto principal
+TEXT_TITLE = ("#0F172A", "#FFFFFF")            # Títulos de página e cards
+TEXT_EXPLORAR = ("#0F172A", "#FFFFFF")         # Alto contraste na tela Explorar
+TEXT_BRAND = ("#0369A1", "#38BDF8")            # Azul celeste vibrante
+TEXT_KPI = ("#0284C7", "#38BDF8")              # Valores numéricos dos KPIs
+TEXT_MUTED = ("#475569", "#CBD5E1")            # Textos secundários legíveis em ambos os temas
+TEXT_LIGHT = ("#64748B", "#94A3B8")            # Placeholders e textos auxiliares
 
-# Botões Secundários Padronizados (Fundo #1E293B, Borda #334155, Texto #FFFFFF no escuro)
-BTN_SECONDARY_BG = ("#F1F5F9", "#1E293B")
+# Botões Secundários Padronizados
+BTN_SECONDARY_BG = ("#F8FAFC", "#1E293B")
 BTN_SECONDARY_HOVER = ("#E2E8F0", "#26354D")
 BTN_SECONDARY_BORDER = ("#CBD5E1", "#334155")
-BTN_SECONDARY_TEXT = ("#0B1C30", "#FFFFFF")
-SEG_SELECTED_BG = ("#93C5FD", "#0284C7")       # Fundo selecionado do SegmentedButton com ótimo contraste
+BTN_SECONDARY_TEXT = ("#0F172A", "#FFFFFF")
+SEG_SELECTED_BG = ("#BAE6FD", "#0284C7")       # Fundo selecionado do SegmentedButton com alto contraste
 
 # Tags e Badges Padronizadas
 TAG_BG = ("#EFF6FF", "#1E293B")
 TAG_BORDER = ("#BFDBFE", "#334155")
-TAG_TEXT = ("#1E40AF", "#FFFFFF")
+TAG_TEXT = ("#1D4ED8", "#FFFFFF")
 
 AMBER = "#F59E0B"                               # Estrelas de avaliação e destaques solares
 SUCCESS = "#10B981"                             # Sucesso / confirmado
@@ -166,7 +166,10 @@ def obter_imagem_processada(
     caminho = obter_caminho_imagem_local(local_id)
     if caminho and caminho.is_file():
         try:
-            img = Image.open(caminho).convert("RGBA")
+            with Image.open(caminho) as raw:
+                if raw.format == "JPEG":
+                    raw.draft("RGB", (largura * 2, altura * 2))
+                img = raw.convert("RGBA")
             target_ratio = largura / altura
             img_ratio = img.width / img.height
             if img_ratio > target_ratio:
@@ -177,7 +180,7 @@ def obter_imagem_processada(
                 new_h = int(img.width / target_ratio)
                 top = (img.height - new_h) // 2
                 img = img.crop((0, top, img.width, top + new_h))
-            img = img.resize((largura, altura), Image.LANCZOS)
+            img = img.resize((largura, altura), Image.Resampling.BILINEAR)
         except Exception:
             img = _criar_imagem_placeholder(local_id, largura, altura)
     else:

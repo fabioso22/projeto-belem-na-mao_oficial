@@ -66,7 +66,7 @@ class PainelAdminApp(ctk.CTk):
         self.modo_grafico: str = "ambos"
         self._graficos_renderizados: bool = False
 
-        self.title("BelémNaMão • DataInsight — Painel Admin (MySQL Aiven)")
+        self.title("BelémNaMão • DataInsight — Painel Admin (MySQL Local)")
         self.geometry(f"{self.LARGURA}x{self.ALTURA}")
         self.minsize(1100, 700)
         self.configure(fg_color=ADMIN_BG)
@@ -228,7 +228,7 @@ class PainelAdminApp(ctk.CTk):
         strip_kpi.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="admin_kpi")
 
         kpis_def = [
-            ("total_acessos", "📊", "TOTAL DE ACESSOS", "—", "● Aguardando carga Aiven", ACCENT_CYAN, ("#E0F2FE", "#0C4A6E")),
+            ("total_acessos", "📊", "TOTAL DE ACESSOS", "—", "● Aguardando carga MySQL", ACCENT_CYAN, ("#E0F2FE", "#0C4A6E")),
             ("total_roteiros", "🗺️", "ADIÇÕES AOS ROTEIROS", "—", "● Interações registradas", ACCENT_INDIGO, ("#E0E7FF", "#1E1B4B")),
             ("top_local", "🏆", "PONTO MAIS PROCURADO", "—", "★ Top 1 em Belém", ACCENT_AMBER, ("#FEF3C7", "#3B2506")),
             ("taxa_media", "📈", "CONVERSÃO P/ ROTEIRO", "—", "▲ Eficiência média", ACCENT_EMERALD, ("#D1FAE5", "#064E3B")),
@@ -307,7 +307,7 @@ class PainelAdminApp(ctk.CTk):
 
         self.btn_carregar = ctk.CTkButton(
             ba_in,
-            text="🔄 Carregar Dados (Aiven)",
+            text="🔄 Carregar Dados (MySQL)",
             height=38,
             corner_radius=9,
             fg_color=ACCENT_CYAN,
@@ -639,7 +639,7 @@ class PainelAdminApp(ctk.CTk):
         if not self.winfo_exists():
             return
 
-        self.btn_carregar.configure(state="normal", text="🔄 Carregar Dados (Aiven)")
+        self.btn_carregar.configure(state="normal", text="🔄 Carregar Dados (MySQL)")
 
         if erro is not None:
             self.df = None
