@@ -5,6 +5,7 @@ Cores profundas inspiradas no Guajará, Açaí amazônico, verdes da floresta e 
 Suporte nativo a Modo Claro e Modo Escuro.
 """
 from pathlib import Path
+import tkinter as tk
 from typing import Dict, Tuple, Optional
 import customtkinter as ctk
 from PIL import Image, ImageDraw
@@ -114,9 +115,18 @@ def fonte(size: int = 14, weight: str = "normal") -> ctk.CTkFont:
 
 
 # ======================================================================
-# Gerenciamento e Cache de Imagens em Alta Performance
+# Gerenciamento e Cache de Imagens em Alta Performance (Multi-Janela Seguro)
 # ======================================================================
-_CACHE_CTK_IMAGENS: Dict[Tuple[str, int, int, int], ctk.CTkImage] = {}
+_CACHE_PIL_IMAGENS: Dict[Tuple[str, int, int, int, bool], Image.Image] = {}
+_CACHE_CTK_IMAGENS: Dict[Tuple[str, int, int, int, bool], ctk.CTkImage] = {}
+_ULTIMO_ROOT_ID: Optional[int] = None
+
+
+def limpar_cache_imagens_tk() -> None:
+    """Limpa o cache de CTkImage ao encerrar uma janela Tk, mantendo o cache PIL puro."""
+    global _ULTIMO_ROOT_ID
+    _CACHE_CTK_IMAGENS.clear()
+    _ULTIMO_ROOT_ID = None
 
 def obter_caminho_imagem_local(local_id: str) -> Optional[Path]:
     """Localiza o arquivo de imagem do local em assets/images."""
@@ -156,45 +166,55 @@ def obter_imagem_processada(
     apenas_topo: bool = False
 ) -> ctk.CTkImage:
     """
-    Carrega, recorta no aspecto desejado com LANCZOS, arredonda cantos e
-    retorna um CTkImage com cache inteligente para máxima fluidez.
+    Carrega, recorta no aspecto desejado, arredonda cantos e retorna um CTkImage
+    vinculado com segurança à janela Tk atual (evita TclError após logout/troca).
     """
+    global _ULTIMO_ROOT_ID
+    root_atual_id = id(tk._default_root) if tk._default_root is not None else None
+    if root_atual_id != _ULTIMO_ROOT_ID:
+        _CACHE_CTK_IMAGENS.clear()
+        _ULTIMO_ROOT_ID = root_atual_id
+
     chave = (local_id, largura, altura, raio, apenas_topo)
     if chave in _CACHE_CTK_IMAGENS:
         return _CACHE_CTK_IMAGENS[chave]
 
-    caminho = obter_caminho_imagem_local(local_id)
-    if caminho and caminho.is_file():
-        try:
-            with Image.open(caminho) as raw:
-                if raw.format == "JPEG":
-                    raw.draft("RGB", (largura * 2, altura * 2))
-                img = raw.convert("RGBA")
-            target_ratio = largura / altura
-            img_ratio = img.width / img.height
-            if img_ratio > target_ratio:
-                new_w = int(img.height * target_ratio)
-                left = (img.width - new_w) // 2
-                img = img.crop((left, 0, left + new_w, img.height))
-            else:
-                new_h = int(img.width / target_ratio)
-                top = (img.height - new_h) // 2
-                img = img.crop((0, top, img.width, top + new_h))
-            img = img.resize((largura, altura), Image.Resampling.BILINEAR)
-        except Exception:
-            img = _criar_imagem_placeholder(local_id, largura, altura)
-    else:
-        img = _criar_imagem_placeholder(local_id, largura, altura)
-
-    # Arredondamento suave de cantos com máscara alpha
-    if raio > 0:
-        mascara = Image.new("L", (largura, altura), 0)
-        draw = ImageDraw.Draw(mascara)
-        if apenas_topo:
-            draw.rounded_rectangle((0, 0, largura, altura), radius=raio, corners=(True, True, False, False), fill=255)
+    img = _CACHE_PIL_IMAGENS.get(chave)
+    if img is None:
+        caminho = obter_caminho_imagem_local(local_id)
+        if caminho and caminho.is_file():
+            try:
+                with Image.open(caminho) as raw:
+                    if raw.format == "JPEG":
+                        raw.draft("RGB", (largura * 2, altura * 2))
+                    img = raw.convert("RGBA")
+                target_ratio = largura / altura
+                img_ratio = img.width / img.height
+                if img_ratio > target_ratio:
+                    new_w = int(img.height * target_ratio)
+                    left = (img.width - new_w) // 2
+                    img = img.crop((left, 0, left + new_w, img.height))
+                else:
+                    new_h = int(img.width / target_ratio)
+                    top = (img.height - new_h) // 2
+                    img = img.crop((0, top, img.width, top + new_h))
+                img = img.resize((largura, altura), Image.Resampling.BILINEAR)
+            except Exception:
+                img = _criar_imagem_placeholder(local_id, largura, altura)
         else:
-            draw.rounded_rectangle((0, 0, largura, altura), radius=raio, fill=255)
-        img.putalpha(mascara)
+            img = _criar_imagem_placeholder(local_id, largura, altura)
+
+        # Arredondamento suave de cantos com máscara alpha
+        if raio > 0:
+            mascara = Image.new("L", (largura, altura), 0)
+            draw = ImageDraw.Draw(mascara)
+            if apenas_topo:
+                draw.rounded_rectangle((0, 0, largura, altura), radius=raio, corners=(True, True, False, False), fill=255)
+            else:
+                draw.rounded_rectangle((0, 0, largura, altura), radius=raio, fill=255)
+            img.putalpha(mascara)
+
+        _CACHE_PIL_IMAGENS[chave] = img
 
     ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(largura, altura))
     _CACHE_CTK_IMAGENS[chave] = ctk_img

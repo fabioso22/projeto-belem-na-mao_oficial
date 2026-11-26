@@ -6,6 +6,7 @@ anotações de pico sazonal e seletor de visualização (Ambos, Evolução Mensa
 import customtkinter as ctk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 import pandas as pd
 
 
@@ -223,20 +224,23 @@ def _criar_figura(df: pd.DataFrame, figsize=(6.8, 6.0), modo: str = "ambos"):
     modo_norm = str(modo or "ambos").strip().lower()
 
     if modo_norm == "evolucao":
-        figura, ax = plt.subplots(1, 1, figsize=figsize, dpi=100)
+        figura = Figure(figsize=figsize, dpi=100)
+        ax = figura.add_subplot(1, 1, 1)
         figura.patch.set_facecolor(cores["fig_bg"])
         _plotar_evolucao_mensal(ax, df, cores)
         figura.tight_layout(pad=2.0)
         return figura
 
     if modo_norm == "ranking":
-        figura, ax = plt.subplots(1, 1, figsize=figsize, dpi=100)
+        figura = Figure(figsize=figsize, dpi=100)
+        ax = figura.add_subplot(1, 1, 1)
         figura.patch.set_facecolor(cores["fig_bg"])
         _plotar_ranking_barras(ax, df, cores)
         figura.tight_layout(pad=2.0)
         return figura
 
-    figura, eixos = plt.subplots(2, 1, figsize=figsize, dpi=100)
+    figura = Figure(figsize=figsize, dpi=100)
+    eixos = figura.subplots(2, 1)
     figura.patch.set_facecolor(cores["fig_bg"])
     _plotar_evolucao_mensal(eixos[0], df, cores)
     _plotar_ranking_barras(eixos[1], df, cores)
